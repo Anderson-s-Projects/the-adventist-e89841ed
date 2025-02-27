@@ -10,6 +10,8 @@ import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
+import BibleStudy from "./pages/BibleStudy";
+import Events from "./pages/Events";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/bible-study" element={<BibleStudy />} />
+          <Route path="/events" element={<Events />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -1,7 +1,7 @@
 
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
-import { Compass, Bookmark, Users, TrendingUp, Star } from "lucide-react";
+import { Compass, Bookmark, Users, TrendingUp, Star, BookOpen, Calendar } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,8 @@ const Explore = () => {
   
   const categories = [
     { id: "trending", name: "Trending", icon: <TrendingUp className="h-4 w-4 mr-2" /> },
-    { id: "popular", name: "Popular", icon: <Star className="h-4 w-4 mr-2" /> },
+    { id: "bibleStudies", name: "Bible Studies", icon: <BookOpen className="h-4 w-4 mr-2" /> },
+    { id: "events", name: "Events", icon: <Calendar className="h-4 w-4 mr-2" /> },
     { id: "people", name: "People", icon: <Users className="h-4 w-4 mr-2" /> },
     { id: "saved", name: "Saved", icon: <Bookmark className="h-4 w-4 mr-2" /> },
   ];
@@ -19,49 +20,49 @@ const Explore = () => {
   const explorePosts = [
     {
       id: 1,
-      title: "Photography Basics",
-      image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["photography", "tutorial", "beginner"],
+      title: "Understanding the Sabbath",
+      image: "https://images.unsplash.com/photo-1501854140801-50d01698950b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      tags: ["sabbath", "bible", "beginner"],
+      author: "Pastor David Wilson",
+      authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
+    },
+    {
+      id: 2,
+      title: "Prayer Tips for Daily Life",
+      image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      tags: ["prayer", "devotional", "spiritual"],
       author: "Emma Roberts",
       authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
     },
     {
-      id: 2,
-      title: "Remote Work Tips",
-      image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["work", "productivity", "remote"],
-      author: "Alex Chen",
-      authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
-    },
-    {
       id: 3,
-      title: "Healthy Recipes",
+      title: "Healthy Plant-Based Recipes",
       image: "https://images.unsplash.com/photo-1495521821757-a1efb6729352?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["food", "health", "cooking"],
+      tags: ["health", "cooking", "vegetarian"],
       author: "Maria Garcia",
       authorAvatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
     },
     {
       id: 4,
-      title: "Minimal Interior Design",
-      image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["design", "interior", "minimalism"],
+      title: "Sanctuary Model Explained",
+      image: "https://images.unsplash.com/photo-1615729947596-a598e5de0ab3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      tags: ["sanctuary", "doctrine", "study"],
       author: "James Wilson",
       authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
     },
     {
       id: 5,
-      title: "Travel Destinations 2023",
+      title: "Adventist Heritage Sites",
       image: "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["travel", "adventure", "vacation"],
+      tags: ["history", "heritage", "travel"],
       author: "Sophie Lee",
       authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
     },
     {
       id: 6,
-      title: "Tech Gadgets Review",
+      title: "Youth Ministry Resources",
       image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      tags: ["tech", "gadgets", "review"],
+      tags: ["youth", "ministry", "resources"],
       author: "David Chen",
       authorAvatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"
     }
@@ -79,7 +80,7 @@ const Explore = () => {
               Explore
             </h1>
             <p className="text-muted-foreground">
-              Discover new content, creators, and communities
+              Discover new content, fellow believers, and spiritual resources
             </p>
           </div>
           
@@ -103,7 +104,7 @@ const Explore = () => {
           <div className="relative mb-8">
             <input
               type="text"
-              placeholder="Search topics, people, or content..."
+              placeholder="Search Bible topics, people, or resources..."
               className="w-full bg-secondary rounded-full py-3 pl-5 pr-12 subtle-ring"
             />
             <Button
