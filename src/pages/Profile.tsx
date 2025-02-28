@@ -37,7 +37,7 @@ const Profile = () => {
         avatar: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80"
       },
       timestamp: "5h ago",
-      content: "\"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you, plans to give you hope and a future.\" - Jeremiah 29:11",
+      content: "\"For I know the plans I have for you,\" declares the LORD, \"plans to prosper you and not to harm you, plans to give you hope and a future.\" - Jeremiah 29:11",
       image: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=500&q=80",
       likes: 254,
       comments: 23,
