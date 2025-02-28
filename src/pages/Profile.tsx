@@ -1,228 +1,237 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/nav/navbar";
-import { PostCard } from "@/components/common/post-card";
 import { Button } from "@/components/common/button";
-import { Settings, MapPin, Calendar, Link as LinkIcon } from "lucide-react";
+import { ProfileCard } from "@/components/common/profile-card";
+import { PostCard } from "@/components/common/post-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const Profile = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("posts");
-  
-  // Mock data
-  const profile = {
-    name: "Taylor Morgan",
-    username: "taylor",
-    avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-    cover: "https://images.unsplash.com/photo-1501675423372-9bfa95849e62?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80",
-    bio: "UX Designer | Coffee addict | Minimalist | Building digital experiences with a focus on simplicity and usability.",
-    location: "San Francisco, CA",
-    website: "taylormorgan.design",
-    joined: "March 2021",
-    following: 248,
-    followers: 1356,
-    isCurrentUser: true
-  };
-  
-  const posts = [
+  const [profile, setProfile] = useState({
+    id: "",
+    username: "loading...",
+    full_name: "Loading...",
+    avatar_url: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+    about: "Loading profile information...",
+    followers_count: 0,
+    following_count: 0,
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({ ...profile });
+  const [isLoading, setIsLoading] = useState(true);
+  const [userPosts, setUserPosts] = useState([]);
+  const [savedItems, setSavedItems] = useState([
     {
-      id: 1,
+      id: "1",
       user: {
-        name: profile.name,
-        username: profile.username,
-        avatar: profile.avatar
+        name: "Daily Devotional",
+        username: "devotional",
+        avatar: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80"
       },
-      timestamp: "2h ago",
-      content: "Just finished designing the new homepage for our project. Really happy with how it turned out! What do you think?",
-      image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      likes: 24,
-      comments: 5,
-      shares: 2,
+      timestamp: "5h ago",
+      content: "\"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you, plans to give you hope and a future.\" - Jeremiah 29:11",
+      image: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=500&q=80",
+      likes: 254,
+      comments: 23,
+      shares: 15,
       liked: true
     },
     {
-      id: 2,
+      id: "2",
       user: {
-        name: profile.name,
-        username: profile.username,
-        avatar: profile.avatar
+        name: "SDA Health",
+        username: "sdahealth",
+        avatar: "https://images.unsplash.com/photo-1612349531440-57023f4e8fc8?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80"
       },
-      timestamp: "3d ago",
-      content: "Exploring some new design inspiration. Love how these minimalist interfaces focus on content and functionality.",
-      likes: 42,
-      comments: 7,
-      shares: 5,
+      timestamp: "2d ago",
+      content: "Remember to take care of your body - it's the temple of the Holy Spirit. Drink plenty of water, eat plant-based foods, and get regular exercise.",
+      image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=500&q=80",
+      likes: 189,
+      comments: 14,
+      shares: 7,
       liked: false
     }
-  ];
+  ]);
 
-  const mediaItems = [
-    {
-      id: 1,
-      type: "image",
-      url: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 2,
-      type: "image",
-      url: "https://images.unsplash.com/photo-1501675423372-9bfa95849e62?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 3,
-      type: "image",
-      url: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    },
-    {
-      id: 4,
-      type: "image",
-      url: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchUserPosts();
     }
-  ];
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (profileData) {
+        const formattedProfile = {
+          id: profileData.id || "",
+          username: profileData.username || user.email.split('@')[0],
+          full_name: profileData.full_name || "SDA Member",
+          avatar_url: profileData.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+          about: profileData.about || "SDA community member",
+          followers_count: 0,
+          following_count: 0,
+        };
+        
+        setProfile(formattedProfile);
+        setEditedProfile(formattedProfile);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:user_id (username, full_name, avatar_url)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setUserPosts(data.map(post => ({
+          id: post.id,
+          user: {
+            id: post.user_id,
+            name: post.profiles?.full_name || "SDA Member",
+            username: post.profiles?.username || "member",
+            avatar: post.profiles?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+          },
+          timestamp: new Date(post.created_at).toLocaleDateString(),
+          content: post.content,
+          image: post.image_url,
+          likes: post.likes_count || 0,
+          comments: post.comments_count || 0,
+          shares: post.shares_count || 0,
+          liked: false
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching user posts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your posts",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: editedProfile.username,
+          full_name: editedProfile.full_name,
+          about: editedProfile.about,
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      setProfile(editedProfile);
+      setIsEditing(false);
+      
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedProfile(profile);
+    setIsEditing(false);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-16">
-        {/* Profile header */}
-        <div className="relative">
-          {/* Cover photo */}
-          <div className="h-48 md:h-64 lg:h-80 overflow-hidden">
-            <img 
-              src={profile.cover} 
-              alt="Cover" 
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          </div>
-          
-          <div className="container max-w-7xl mx-auto px-4 md:px-6">
-            <div className="relative -mt-16 md:-mt-20 flex flex-col md:flex-row md:items-end md:justify-between mb-4 md:mb-6">
-              {/* Avatar and name */}
-              <div className="flex flex-col md:flex-row md:items-end">
-                <div className="w-32 h-32 md:w-36 md:h-36 rounded-full border-4 border-background overflow-hidden shadow-elevated mr-0 md:mr-4 mx-auto md:mx-0">
-                  <img 
-                    src={profile.avatar} 
-                    alt={profile.name} 
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                
-                <div className="mt-4 md:mt-0 text-center md:text-left">
-                  <h1 className="text-heading-4 font-medium">{profile.name}</h1>
-                  <p className="text-muted-foreground">@{profile.username}</p>
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="mt-4 md:mt-0 flex justify-center md:justify-end">
-                {profile.isCurrentUser ? (
-                  <Button variant="outline" className="flex items-center gap-1">
-                    <Settings className="w-4 h-4" />
-                    <span>Edit Profile</span>
-                  </Button>
-                ) : (
-                  <Button>Follow</Button>
-                )}
-              </div>
-            </div>
-            
-            {/* Bio and info */}
-            <div className="mb-6">
-              <p className="mb-4 text-balance">{profile.bio}</p>
-              
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {profile.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{profile.location}</span>
-                  </div>
-                )}
-                
-                {profile.website && (
-                  <div className="flex items-center gap-1">
-                    <LinkIcon className="w-4 h-4" />
-                    <a href={`https://${profile.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      {profile.website}
-                    </a>
-                  </div>
-                )}
-                
-                {profile.joined && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>Joined {profile.joined}</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex gap-4 mt-4">
-                <div>
-                  <span className="font-medium">{profile.following}</span>
-                  <span className="text-muted-foreground ml-1">Following</span>
-                </div>
-                <div>
-                  <span className="font-medium">{profile.followers}</span>
-                  <span className="text-muted-foreground ml-1">Followers</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Tabs */}
-            <div className="border-b">
-              <div className="flex overflow-x-auto">
-                {["posts", "media", "likes"].map((tab) => (
-                  <button
-                    key={tab}
-                    className={`flex-1 max-w-[200px] min-w-[100px] py-3 px-4 text-center font-medium transition-colors relative
-                    ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                    onClick={() => setActiveTab(tab)}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    {activeTab === tab && (
-                      <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      <main className="pt-20 pb-16 container max-w-4xl mx-auto px-4">
+        <ProfileCard 
+          profile={profile}
+          isEditing={isEditing}
+          editedProfile={editedProfile}
+          setEditedProfile={setEditedProfile}
+          onEdit={() => setIsEditing(true)}
+          onSave={handleSaveProfile}
+          onCancel={handleCancelEdit}
+          isCurrentUser={true}
+        />
         
-        {/* Content */}
-        <div className="container max-w-7xl mx-auto px-4 md:px-6 py-6">
-          {activeTab === "posts" && (
-            <div className="max-w-2xl mx-auto">
-              {posts.map((post) => (
-                <PostCard key={post.id} {...post} />
+        <div className="mt-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="saved">Saved</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="posts" className="mt-6">
+              {userPosts.length > 0 ? (
+                userPosts.map((post, index) => (
+                  <PostCard key={post.id} {...post} />
+                ))
+              ) : (
+                <div className="bordered-card rounded-xl p-8 text-center">
+                  <h3 className="font-medium text-lg mb-2">No posts yet</h3>
+                  <p className="text-muted-foreground mb-4">You haven't shared anything with the community yet.</p>
+                  <Button onClick={() => window.location.href = '/feed'}>
+                    Create Your First Post
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="saved" className="mt-6">
+              {savedItems.map((item) => (
+                <PostCard key={item.id} {...item} />
               ))}
-            </div>
-          )}
-          
-          {activeTab === "media" && (
-            <div className="max-w-4xl mx-auto">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {mediaItems.map((item) => (
-                  <div key={item.id} className="aspect-square rounded-lg overflow-hidden bordered-card card-hover">
-                    <img 
-                      src={item.url} 
-                      alt="Media" 
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
+            </TabsContent>
+            
+            <TabsContent value="activity" className="mt-6">
+              <div className="bordered-card rounded-xl p-8 text-center">
+                <h3 className="font-medium text-lg mb-2">Coming soon</h3>
+                <p className="text-muted-foreground">Activity tracking features are under development.</p>
               </div>
-            </div>
-          )}
-          
-          {activeTab === "likes" && (
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center text-muted-foreground py-12">
-                <p>No liked posts yet</p>
-              </div>
-            </div>
-          )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

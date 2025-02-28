@@ -1,226 +1,181 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
 import { Button } from "@/components/common/button";
-import { Logo } from "@/components/ui/logo";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toaster";
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const signupSchema = loginSchema.extend({
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type SignupFormValues = z.infer<typeof signupSchema>;
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/components/ui/use-toast";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const { signIn, signUp, user, isLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn, signUp, user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
 
-  // Redirect if already logged in
   if (user) {
     navigate("/feed");
     return null;
   }
 
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const signupForm = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
-  });
-
-  const onLoginSubmit = async (values: LoginFormValues) => {
-    const { error } = await signIn(values.email, values.password);
-    if (!error) {
-      navigate("/feed");
-    }
-  };
-
-  const onSignupSubmit = async (values: SignupFormValues) => {
-    const { error } = await signUp(values.email, values.password);
-    if (!error) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      if (activeTab === "signin") {
+        const { error } = await signIn(email, password);
+        if (error) throw error;
+        navigate("/feed");
+      } else {
+        const { error } = await signUp(email, password);
+        if (error) throw error;
+        toast({
+          title: "Account created",
+          description: "Please check your email for verification instructions.",
+        });
+        setActiveTab("signin");
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
       toast({
-        title: "Verification email sent",
-        description: "Please check your email to verify your account.",
+        title: "Authentication failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-8 bordered-card rounded-xl p-8">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <Logo />
-            </div>
-            <h1 className="text-heading-2 font-medium font-display mb-2">
-              {isLogin ? "Welcome Back" : "Create an Account"}
-            </h1>
-            <p className="text-muted-foreground">
-              {isLogin
-                ? "Sign in to your Seventh-day Adventist community account"
-                : "Join our Seventh-day Adventist community platform"}
-            </p>
-          </div>
-
-          {isLogin ? (
-            <Form {...loginForm}>
-              <form
-                onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={loginForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="your.email@example.com"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={loginForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <Form {...signupForm}>
-              <form
-                onSubmit={signupForm.handleSubmit(onSignupSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={signupForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="your.email@example.com"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={signupForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={signupForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
-              </form>
-            </Form>
-          )}
-
-          <div className="text-center mt-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold tracking-tight">SDA Connect</h1>
+          <p className="mt-2 text-muted-foreground">
+            Join the Seventh-day Adventist community platform
+          </p>
+        </div>
+        
+        <Tabs defaultValue="signin" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+          
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <TabsContent value="signin">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium">
+                    Password
+                  </label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="text-right text-sm">
+                  <a href="#" className="text-primary hover:underline">
+                    Forgot password?
+                  </a>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="signup">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="signup-email" className="block text-sm font-medium">
+                    Email
+                  </label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="signup-password" className="block text-sm font-medium">
+                    Password
+                  </label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="mt-1"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Password must be at least 6 characters long
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+            
             <Button
-              variant="link"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary"
+              type="submit"
+              className="w-full"
+              isLoading={isLoading}
             >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
+              {activeTab === "signin" ? "Sign In" : "Create Account"}
+            </Button>
+          </form>
+        </Tabs>
+        
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Button variant="outline" type="button" className="w-full">
+              Google
+            </Button>
+            <Button variant="outline" type="button" className="w-full">
+              Facebook
             </Button>
           </div>
         </div>
       </div>
+      
+      <Toaster />
     </div>
   );
 };

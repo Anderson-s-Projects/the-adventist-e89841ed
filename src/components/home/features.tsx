@@ -1,113 +1,60 @@
 
-import { cn } from "@/lib/utils";
-
-interface FeatureCardProps {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  className?: string;
-}
-
-function FeatureCard({ title, description, icon, className }: FeatureCardProps) {
-  return (
-    <div className={cn(
-      "glass-card rounded-xl p-6 animate-fade-in card-hover",
-      className
-    )}>
-      <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
-        {icon}
-      </div>
-      <h3 className="text-heading-5 font-medium mb-2">{title}</h3>
-      <p className="text-muted-foreground text-balance">{description}</p>
-    </div>
-  );
-}
+import { BookOpen, Calendar, MessageSquare, HeartHandshake, Users, BookMarked } from "lucide-react";
 
 export function Features() {
   const features = [
     {
-      title: "Meaningful Connections",
-      description: "Our algorithm promotes deeper relationships over viral content, focusing on quality over quantity.",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-6 w-6"
-        >
-          <path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.34-3 3.01-3H18" />
-          <path d="M6 17h1" />
-          <path d="M6 13h1" />
-          <path d="M18 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
-          <path d="M18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
-          <path d="M6 9h1" />
-        </svg>
-      ),
+      icon: <BookOpen className="h-10 w-10 mb-3 text-primary" />,
+      title: "Bible Study",
+      description: "Access Bible study materials, commentaries, and share insights with others."
     },
     {
-      title: "Privacy Focused",
-      description: "Your data is yours. We don't sell your information to advertisers or track your every move online.",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-6 w-6"
-        >
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          <circle cx="12" cy="16" r="1" />
-        </svg>
-      ),
+      icon: <Calendar className="h-10 w-10 mb-3 text-primary" />,
+      title: "Events",
+      description: "Find and join local church events, seminars, and community service opportunities."
     },
     {
-      title: "Thoughtful Design",
-      description: "Our clean interface reduces distraction and helps you focus on what matters most - the people.",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-6 w-6"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-          <line x1="9" x2="9.01" y1="9" y2="9" />
-          <line x1="15" x2="15.01" y1="9" y2="9" />
-        </svg>
-      ),
+      icon: <MessageSquare className="h-10 w-10 mb-3 text-primary" />,
+      title: "Discussion Forums",
+      description: "Engage in meaningful conversations about faith, doctrine, and Christian living."
     },
+    {
+      icon: <HeartHandshake className="h-10 w-10 mb-3 text-primary" />,
+      title: "Prayer Requests",
+      description: "Share prayer needs and pray for others in the community."
+    },
+    {
+      icon: <Users className="h-10 w-10 mb-3 text-primary" />,
+      title: "Community Groups",
+      description: "Join interest-based groups for fellowship and collaboration."
+    },
+    {
+      icon: <BookMarked className="h-10 w-10 mb-3 text-primary" />,
+      title: "Resource Sharing",
+      description: "Share and discover sermons, books, and other spiritual resources."
+    }
   ];
 
   return (
-    <section className="py-20 md:py-28">
-      <div className="container max-w-7xl mx-auto px-4 md:px-6">
-        <div className="max-w-3xl mx-auto text-center mb-12 md:mb-20">
-          <h2 className="text-heading-2 font-display font-bold mb-4">Why Choose Nexus</h2>
-          <p className="text-xl text-muted-foreground text-balance">
-            We've reimagined social media to prioritize human connection and digital wellbeing.
-          </p>
+    <section className="py-12 md:py-20 bg-muted/50">
+      <div className="container mx-auto px-4 md:px-6">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              Connect, Share, Grow
+            </h2>
+            <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
+              Discover the key features of our SDA community platform designed to strengthen your faith journey.
+            </p>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-12">
           {features.map((feature, index) => (
-            <FeatureCard 
-              key={index}
-              {...feature}
-              className={{ animationDelay: `${index * 100}ms` } as any}
-            />
+            <div key={index} className="flex flex-col items-center space-y-2 rounded-lg border p-6 bg-card shadow-sm">
+              {feature.icon}
+              <h3 className="text-xl font-bold">{feature.title}</h3>
+              <p className="text-center text-muted-foreground">{feature.description}</p>
+            </div>
           ))}
         </div>
       </div>

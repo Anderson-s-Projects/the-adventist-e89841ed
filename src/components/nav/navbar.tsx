@@ -128,7 +128,7 @@ export function Navbar() {
               </>
             ) : (
               <Button 
-                variant="default" 
+                variant="primary" 
                 size="sm" 
                 onClick={() => navigate("/auth")}
                 className="hidden md:inline-flex"
