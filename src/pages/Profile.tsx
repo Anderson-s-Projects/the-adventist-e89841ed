@@ -8,10 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: profileData, isLoading: isProfileLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState("posts");
   const [profile, setProfile] = useState({
     id: "",
@@ -65,6 +67,14 @@ const Profile = () => {
       fetchUserPosts();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (profileData) {
+      setProfile(profileData);
+      setEditedProfile(profileData);
+      setIsLoading(false);
+    }
+  }, [profileData]);
 
   const fetchProfile = async () => {
     try {
