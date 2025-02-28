@@ -1,92 +1,84 @@
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/common/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar } from "@/components/ui/avatar";
+import { 
+  Image as ImageIcon, 
+  Video, 
+  Link as LinkIcon, 
+  Smile, 
+  X, 
+  Loader2 
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Image, Link, Video, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface PostComposerProps {
-  userAvatarUrl: string | null;
+  onPostCreated?: () => void;
+  className?: string;
 }
 
-export function PostComposer({ userAvatarUrl }: PostComposerProps) {
-  const [postContent, setPostContent] = useState("");
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
-  const [postLink, setPostLink] = useState("");
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+export function PostComposer({ onPostCreated, className }: PostComposerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  // Create post mutation
-  const createPostMutation = useMutation({
-    mutationFn: async ({ content, mediaUrl, link }: { content: string, mediaUrl?: string, link?: string }) => {
-      const postData = { 
-        user_id: user!.id, 
-        content,
-        type: "regular",
-        is_sabbath_appropriate: true,
-        metadata: {}
-      };
-      
-      if (mediaUrl) {
-        postData.metadata = {
-          ...postData.metadata,
-          media_url: mediaUrl,
-          media_type: mediaType
-        };
-      }
-      
-      if (link) {
-        postData.metadata = {
-          ...postData.metadata,
-          link_url: link
-        };
-      }
-      
-      const { data, error } = await supabase
-        .from("posts")
-        .insert([postData])
-        .select();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      resetForm();
-      toast({
-        title: "Post created",
-        description: "Your post has been published successfully."
-      });
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to create post",
-        description: error.message,
-      });
+  const [content, setContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string>("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+  };
+
+  const handleMediaClick = (type: "image" | "video") => {
+    setMediaType(type);
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = type === "image" ? "image/*" : "video/*";
+      fileInputRef.current.click();
     }
-  });
-  
-  const uploadMedia = async () => {
-    if (!mediaFile) return null;
-    
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setMediaFile(file);
+
+    // Create a preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMediaPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const uploadMedia = async (file: File): Promise<string | null> => {
     try {
-      const fileExt = mediaFile.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}_${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `post-media/${fileName}`;
       
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from('post-media')
-        .upload(filePath, mediaFile);
+        .upload(filePath, file);
       
-      if (uploadError) throw uploadError;
+      if (error) throw error;
       
       const { data: { publicUrl } } = supabase.storage
         .from('post-media')
@@ -95,190 +87,205 @@ export function PostComposer({ userAvatarUrl }: PostComposerProps) {
       return publicUrl;
     } catch (error) {
       console.error('Error uploading media:', error);
-      throw error;
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload media file",
+        variant: "destructive",
+      });
+      return null;
     }
   };
-  
-  const handleCreatePost = async () => {
-    if (!postContent.trim() && !mediaFile && !postLink.trim()) {
+
+  const handlePostSubmit = async () => {
+    if (!content.trim() && !mediaFile && !linkUrl) {
       toast({
+        title: "Empty Post",
+        description: "Please add some content, media, or a link to your post",
         variant: "destructive",
-        title: "Empty post",
-        description: "Please enter some content, add media, or include a link for your post."
       });
       return;
     }
-    
+
+    setIsSubmitting(true);
+
     try {
       let mediaUrl = null;
-      
       if (mediaFile) {
-        mediaUrl = await uploadMedia();
+        mediaUrl = await uploadMedia(mediaFile);
       }
-      
-      createPostMutation.mutate({ 
-        content: postContent, 
-        mediaUrl, 
-        link: postLink.trim() ? postLink : undefined 
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Upload failed",
-        description: "Failed to upload media file."
-      });
-    }
-  };
-  
-  const handleImageClick = () => {
-    imageInputRef.current?.click();
-  };
-  
-  const handleVideoClick = () => {
-    videoInputRef.current?.click();
-  };
-  
-  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setMediaFile(file);
-      setMediaType(type);
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMediaPreview(reader.result as string);
+
+      // Prepare metadata for the post
+      const metadata = {
+        media_type: mediaType,
+        media_url: mediaUrl,
+        link_url: linkUrl || null
       };
-      reader.readAsDataURL(file);
+
+      const { error } = await supabase
+        .from('posts')
+        .insert({
+          user_id: user.id,
+          content: content.trim(),
+          metadata: metadata,
+          type: 'regular'
+        });
+
+      if (error) throw error;
+
+      // Reset form
+      setContent("");
+      setMediaFile(null);
+      setMediaPreview(null);
+      setMediaType(null);
+      setLinkUrl("");
+      setShowLinkInput(false);
+
+      toast({
+        title: "Post Created",
+        description: "Your post has been shared with the community"
+      });
+
+      if (onPostCreated) {
+        onPostCreated();
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create post",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-  
-  const resetForm = () => {
-    setPostContent("");
-    setMediaPreview(null);
-    setMediaFile(null);
-    setMediaType(null);
-    setPostLink("");
-  };
-  
-  const removeMedia = () => {
-    setMediaPreview(null);
-    setMediaFile(null);
-    setMediaType(null);
-    
-    // Reset file inputs
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   return (
-    <div className="bordered-card rounded-xl p-5 mb-6">
-      <div className="flex items-start">
-        <img 
-          src={userAvatarUrl || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"} 
-          alt="Your profile" 
-          className="w-10 h-10 rounded-full object-cover mr-3"
-        />
-        <div className="flex-1 flex flex-col">
-          <textarea
-            placeholder="Share spiritual thoughts or prayer requests..."
-            className="flex-1 bg-transparent border-none resize-none h-20 focus:outline-none w-full"
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-          ></textarea>
+    <div className={`bordered-card rounded-xl p-5 ${className}`}>
+      <div className="flex space-x-3">
+        <Avatar className="h-10 w-10">
+          <img 
+            src={user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"} 
+            alt="Avatar" 
+            className="h-full w-full rounded-full object-cover"
+          />
+        </Avatar>
+        
+        <div className="flex-1">
+          <Textarea
+            placeholder="Share something with the community..."
+            value={content}
+            onChange={handleContentChange}
+            className="resize-none min-h-[100px] mb-2"
+          />
           
+          {/* Media preview */}
           {mediaPreview && (
-            <div className="relative mt-2 mb-3">
-              {mediaType === 'image' ? (
-                <img 
-                  src={mediaPreview} 
-                  alt="Upload preview" 
-                  className="rounded-lg max-h-64 object-contain"
-                />
-              ) : (
-                <video 
-                  src={mediaPreview} 
-                  controls 
-                  className="rounded-lg max-h-64 w-full"
-                />
-              )}
-              <button 
+            <div className="relative mb-3 mt-2">
+              <div className="rounded-lg overflow-hidden border border-border">
+                {mediaType === 'image' ? (
+                  <img 
+                    src={mediaPreview} 
+                    alt="Upload preview" 
+                    className="max-h-[300px] w-auto mx-auto"
+                  />
+                ) : (
+                  <video 
+                    src={mediaPreview} 
+                    controls
+                    className="max-h-[300px] w-auto mx-auto"
+                  />
+                )}
+              </div>
+              <button
                 onClick={removeMedia}
                 className="absolute top-2 right-2 bg-background/80 p-1 rounded-full"
               >
-                <X size={16} className="text-foreground" />
+                <X size={16} className="text-red-500" />
               </button>
             </div>
           )}
           
-          {postLink && (
-            <div className="mt-2 mb-3 p-3 bg-muted rounded-lg flex items-center">
-              <Link size={16} className="mr-2 text-primary" />
-              <span className="text-sm text-ellipsis overflow-hidden">{postLink}</span>
-              <button 
-                onClick={() => setPostLink("")}
-                className="ml-auto"
-              >
-                <X size={16} className="text-muted-foreground" />
-              </button>
-            </div>
-          )}
-          
-          {!mediaPreview && !postLink && (
-            <div className="mt-2 mb-3">
-              <input
-                type="text"
-                placeholder="Add a link..."
-                className="w-full p-2 bg-muted rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                value={postLink}
-                onChange={(e) => setPostLink(e.target.value)}
+          {/* Link input */}
+          {showLinkInput && (
+            <div className="flex items-center mb-3 mt-2">
+              <Input
+                type="url"
+                placeholder="Enter link URL"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                className="flex-1"
               />
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => {
+                  setShowLinkInput(false);
+                  setLinkUrl("");
+                }}
+              >
+                <X size={16} className="text-red-500" />
+              </Button>
             </div>
           )}
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center mt-3 pt-3 border-t">
-        <div className="flex space-x-2">
-          <input 
-            type="file" 
-            ref={imageInputRef}
-            accept="image/*" 
-            className="hidden" 
-            onChange={(e) => handleMediaChange(e, "image")}
-          />
-          <input 
-            type="file" 
-            ref={videoInputRef}
-            accept="video/*" 
-            className="hidden" 
-            onChange={(e) => handleMediaChange(e, "video")}
+          
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
           />
           
-          <button 
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-            onClick={handleImageClick}
-            disabled={!!mediaPreview || !!postLink}
-            title="Add image"
-          >
-            <Image size={18} className={mediaPreview || postLink ? "text-muted-foreground" : "text-foreground"} />
-          </button>
-          
-          <button 
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-            onClick={handleVideoClick}
-            disabled={!!mediaPreview || !!postLink}
-            title="Add video"
-          >
-            <Video size={18} className={mediaPreview || postLink ? "text-muted-foreground" : "text-foreground"} />
-          </button>
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => handleMediaClick('image')}
+                className="flex items-center"
+              >
+                <ImageIcon size={16} className="mr-1" />
+                <span className="hidden sm:inline">Image</span>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => handleMediaClick('video')}
+                className="flex items-center"
+              >
+                <Video size={16} className="mr-1" />
+                <span className="hidden sm:inline">Video</span>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowLinkInput(!showLinkInput)}
+                className="flex items-center"
+              >
+                <LinkIcon size={16} className="mr-1" />
+                <span className="hidden sm:inline">Link</span>
+              </Button>
+            </div>
+            
+            <Button 
+              onClick={handlePostSubmit}
+              disabled={isSubmitting || (!content.trim() && !mediaFile && !linkUrl)}
+              className="flex items-center"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                'Post'
+              )}
+            </Button>
+          </div>
         </div>
-        
-        <Button 
-          onClick={handleCreatePost}
-          disabled={createPostMutation.isPending}
-        >
-          {createPostMutation.isPending ? "Posting..." : "Post"}
-        </Button>
       </div>
     </div>
   );

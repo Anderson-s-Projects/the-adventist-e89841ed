@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
 import { ProfileCard } from "@/components/common/profile-card";
@@ -8,7 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useNavigate, useLocation } from "react-router-dom";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -167,7 +168,8 @@ const Profile = () => {
     }
   };
 
-  const uploadAvatar = async (file: File) => {
+  // Fixed the return type to void instead of string
+  const uploadAvatar = async (file: File): Promise<void> => {
     try {
       // Create a unique file path
       const fileExt = file.name.split('.').pop();
@@ -192,7 +194,6 @@ const Profile = () => {
         avatar_url: publicUrl
       });
       
-      return publicUrl;
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({
@@ -200,7 +201,6 @@ const Profile = () => {
         description: "Failed to upload avatar image",
         variant: "destructive",
       });
-      throw error;
     }
   };
 
