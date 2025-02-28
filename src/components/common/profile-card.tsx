@@ -86,7 +86,7 @@ export function ProfileCard({
               </div>
               
               <div>
-                <label className="text-sm font-medium mb-1 block">About</label>
+                <label className="text-sm font-medium mb-1 block px-0">About</label>
                 <Textarea name="about" value={editedProfile?.about || ''} onChange={handleChange} className="max-w-md" rows={3} />
               </div>
             </div> : <>
@@ -94,7 +94,7 @@ export function ProfileCard({
               <p className="text-muted-foreground mb-2">@{profile.username}</p>
               <p className="mb-4">{profile.about}</p>
               
-              <div className="flex gap-6 px-[7px]">
+              <div className="flex gap-6">
                 <div>
                   <span className="font-medium text-lg">{profile.following_count || 0}</span>
                   <span className="text-muted-foreground ml-1">Following</span>
