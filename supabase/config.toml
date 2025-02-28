@@ -30,3 +30,6 @@ enable_signup = true
 
 [functions]
 port = 9000
+
+[realtime]
+enabled = true

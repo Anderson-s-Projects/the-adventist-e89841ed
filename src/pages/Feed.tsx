@@ -80,6 +80,7 @@ const Feed = () => {
         user_has_liked: false // We'll implement this later
       }));
     },
+    enabled: !!user
   });
   
   // Fetch current user profile
@@ -191,9 +192,16 @@ const Feed = () => {
     createPostMutation.mutate(postContent);
   };
   
+  // Handle like toggling
+  const handleLikeChange = (postId: string, liked: boolean) => {
+    console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
+    // Here we would update the database with the like status
+    // For now we just update the UI through the PostCard component's internal state
+  };
+  
   // Set up real-time subscription for new posts
   useEffect(() => {
-    const subscription = supabase
+    const channel = supabase
       .channel('public:posts')
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -206,7 +214,7 @@ const Feed = () => {
       .subscribe();
       
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
@@ -297,8 +305,10 @@ const Feed = () => {
               ) : posts.length > 0 ? (
                 posts.map((post) => (
                   <PostCard 
-                    key={post.id} 
+                    key={post.id}
+                    id={post.id}
                     user={{
+                      id: post.user_id,
                       name: post.profiles?.full_name || "SDA Member",
                       username: post.profiles?.username || "member",
                       avatar: post.profiles?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
@@ -310,6 +320,7 @@ const Feed = () => {
                     comments={post.comments_count || 0}
                     shares={post.shares_count || 0}
                     liked={post.user_has_liked || false}
+                    onLikeChange={handleLikeChange}
                   />
                 ))
               ) : (

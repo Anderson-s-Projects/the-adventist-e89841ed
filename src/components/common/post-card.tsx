@@ -2,13 +2,19 @@
 import { cn } from "@/lib/utils";
 import { Heart, MessageCircle, Share } from "lucide-react";
 import { Button } from "./button";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PostCardProps {
   className?: string;
+  id: string;
   user: {
     name: string;
     username: string;
     avatar: string;
+    id?: string;
   };
   timestamp: string;
   content: string;
@@ -17,19 +23,47 @@ interface PostCardProps {
   comments: number;
   shares: number;
   liked?: boolean;
+  onLikeChange?: (id: string, liked: boolean) => void;
 }
 
 export function PostCard({
   className,
+  id,
   user,
   timestamp,
   content,
   image,
-  likes,
+  likes: initialLikes,
   comments,
   shares,
-  liked = false,
+  liked: initialLiked = false,
+  onLikeChange,
 }: PostCardProps) {
+  const [liked, setLiked] = useState(initialLiked);
+  const [likes, setLikes] = useState(initialLikes);
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+
+  const handleLikeToggle = async () => {
+    if (!currentUser) return;
+    
+    const newLikedState = !liked;
+    setLiked(newLikedState);
+    setLikes(prevLikes => newLikedState ? prevLikes + 1 : prevLikes - 1);
+    
+    if (onLikeChange) {
+      onLikeChange(id, newLikedState);
+    }
+    
+    // Here you would update the like status in your database
+    // This is a placeholder for future implementation
+    toast({
+      title: newLikedState ? "Post liked" : "Post unliked",
+      description: "Your preference has been saved.",
+      duration: 2000,
+    });
+  };
+
   return (
     <div className={cn("bordered-card rounded-xl p-5 mb-4 animate-fade-in card-hover", className)}>
       <div className="flex items-center mb-3">
@@ -65,6 +99,7 @@ export function PostCard({
             variant="ghost" 
             size="sm" 
             className={cn("py-1 flex items-center gap-1", liked && "text-red-500")}
+            onClick={handleLikeToggle}
           >
             <Heart className={cn("h-4 w-4", liked && "fill-red-500")} />
             <span>{likes}</span>
