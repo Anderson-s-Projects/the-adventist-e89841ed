@@ -21,6 +21,7 @@ interface ProfileCardProps {
     username: string;
     full_name: string;
     about?: string;
+    avatar_url?: string;
   };
   setEditedProfile?: (profile: any) => void;
   onEdit?: () => void;
