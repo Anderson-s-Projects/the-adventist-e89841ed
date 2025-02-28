@@ -1,88 +1,214 @@
 
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/nav/navbar";
 import { PostCard } from "@/components/common/post-card";
 import { ProfileCard } from "@/components/common/profile-card";
 import { Button } from "@/components/common/button";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface Post {
+  id: string;
+  user_id: string;
+  content: string;
+  image_url?: string | null;
+  created_at: string;
+  profiles: {
+    full_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+  likes_count?: number;
+  comments_count?: number;
+  shares_count?: number;
+  user_has_liked?: boolean;
+}
+
+interface Profile {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  about: string | null;
+  following_count?: number;
+  followers_count?: number;
+  user_is_following?: boolean;
+}
 
 const Feed = () => {
-  // Mock data
-  const posts = [
-    {
-      id: 1,
-      user: {
-        name: "Alex Johnson",
-        username: "alexj",
-        avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
-      },
-      timestamp: "2h ago",
-      content: "Just finished designing the new homepage for our project. Really happy with how it turned out! What do you think?",
-      image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      likes: 24,
-      comments: 5,
-      shares: 2,
-      liked: true
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [postContent, setPostContent] = useState("");
+  
+  // Fetch posts
+  const { data: posts = [], isLoading: isLoadingPosts } = useQuery({
+    queryKey: ["posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`
+          *,
+          profiles:user_id (
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error("Error fetching posts:", error);
+        throw error;
+      }
+      
+      // Transform data to match our component props
+      return data.map((post: any): Post => ({
+        id: post.id,
+        user_id: post.user_id,
+        content: post.content,
+        image_url: post.image_url,
+        created_at: post.created_at,
+        profiles: post.profiles,
+        likes_count: 0, // We'll implement likes later
+        comments_count: 0, // We'll implement comments later
+        shares_count: 0, // We'll implement shares later
+        user_has_liked: false // We'll implement this later
+      }));
     },
-    {
-      id: 2,
-      user: {
-        name: "Mia Williams",
-        username: "miaw",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
-      },
-      timestamp: "5h ago",
-      content: "Spent the day exploring some new hiking trails. Nature always helps me reset and find new inspiration.",
-      image: "https://images.unsplash.com/photo-1501675423372-9bfa95849e62?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      likes: 56,
-      comments: 8,
-      shares: 3,
-      liked: false
+  });
+  
+  // Fetch current user profile
+  const { data: userProfile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        throw error;
+      }
+      
+      return {
+        id: data.id,
+        username: data.username || user.email?.split("@")[0],
+        full_name: data.full_name || "SDA Member",
+        avatar_url: data.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+        about: data.about || "SDA community member",
+        following_count: 0, // We'll implement this later
+        followers_count: 0, // We'll implement this later
+      };
     },
-    {
-      id: 3,
-      user: {
-        name: "David Chen",
-        username: "davitech",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
-      },
-      timestamp: "1d ago",
-      content: "Just read an amazing article about minimalist design principles. It's fascinating how 'less' can actually be 'more' when done thoughtfully.",
-      likes: 42,
-      comments: 7,
-      shares: 5,
-      liked: false
+    enabled: !!user?.id,
+  });
+  
+  // Fetch suggested profiles
+  const { data: suggestedProfiles = [] } = useQuery({
+    queryKey: ["suggestedProfiles"],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .neq("id", user.id)
+        .limit(3);
+      
+      if (error) {
+        console.error("Error fetching suggested profiles:", error);
+        throw error;
+      }
+      
+      return data.map((profile): Profile => ({
+        id: profile.id,
+        username: profile.username || "sdamember",
+        full_name: profile.full_name || "SDA Member",
+        avatar_url: profile.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+        about: profile.about || "SDA community member",
+        following_count: 0,
+        followers_count: 0,
+        user_is_following: false
+      }));
+    },
+    enabled: !!user?.id,
+  });
+  
+  // Create post mutation
+  const createPostMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const { data, error } = await supabase
+        .from("posts")
+        .insert([
+          { 
+            user_id: user!.id, 
+            content,
+            type: "regular",
+            is_sabbath_appropriate: true
+          }
+        ])
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setPostContent("");
+      toast({
+        title: "Post created",
+        description: "Your post has been published successfully."
+      });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to create post",
+        description: error.message,
+      });
     }
-  ];
-
-  const suggestedUsers = [
-    {
-      name: "Emma Smith",
-      username: "emmadesigns",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-      bio: "Product designer. Coffee enthusiast. Dog lover.",
-      following: 342,
-      followers: 2840,
-      isFollowing: false
-    },
-    {
-      name: "James Wilson",
-      username: "jameswil",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-      bio: "Photographer and filmmaker.",
-      following: 128,
-      followers: 1254,
-      isFollowing: true
-    },
-    {
-      name: "Sophia Lee",
-      username: "sophialee",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-      bio: "Digital artist & illustrator",
-      following: 215,
-      followers: 3120,
-      isFollowing: false
+  });
+  
+  const handleCreatePost = () => {
+    if (!postContent.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Empty post",
+        description: "Please enter some content for your post."
+      });
+      return;
     }
-  ];
+    
+    createPostMutation.mutate(postContent);
+  };
+  
+  // Set up real-time subscription for new posts
+  useEffect(() => {
+    const subscription = supabase
+      .channel('public:posts')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'posts' 
+      }, (payload) => {
+        // When a new post is created, invalidate the posts query
+        queryClient.invalidateQueries({ queryKey: ["posts"] });
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [queryClient]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,18 +220,20 @@ const Feed = () => {
             {/* Sidebar - profile and navigation */}
             <div className="hidden md:block">
               <div className="sticky top-24">
-                <ProfileCard 
-                  user={{
-                    name: "Taylor Morgan",
-                    username: "taylor",
-                    avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-                    bio: "UX Designer | Coffee addict | Minimalist",
-                    following: 248,
-                    followers: 1356,
-                  }}
-                  variant="full"
-                  className="mb-6"
-                />
+                {userProfile && (
+                  <ProfileCard 
+                    user={{
+                      name: userProfile.full_name || "SDA Member",
+                      username: userProfile.username || "member",
+                      avatar: userProfile.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+                      bio: userProfile.about || "SDA community member",
+                      following: userProfile.following_count || 0,
+                      followers: userProfile.followers_count || 0,
+                    }}
+                    variant="full"
+                    className="mb-6"
+                  />
+                )}
                 
                 <div className="bordered-card rounded-xl p-4 mb-6">
                   <h3 className="font-medium mb-3">Navigation</h3>
@@ -113,7 +241,8 @@ const Feed = () => {
                     {[
                       { name: "Home", path: "/feed" },
                       { name: "Explore", path: "/explore" },
-                      { name: "Bookmarks", path: "/bookmarks" },
+                      { name: "Bible Study", path: "/bible-study" },
+                      { name: "Events", path: "/events" },
                       { name: "Messages", path: "/messages" },
                       { name: "Profile", path: "/profile" },
                     ].map((item) => (
@@ -136,29 +265,59 @@ const Feed = () => {
               <div className="bordered-card rounded-xl p-5 mb-6">
                 <div className="flex items-start">
                   <img 
-                    src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80" 
+                    src={userProfile?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"} 
                     alt="Your profile" 
                     className="w-10 h-10 rounded-full object-cover mr-3"
                   />
                   <textarea
-                    placeholder="What's on your mind?"
+                    placeholder="Share spiritual thoughts or prayer requests..."
                     className="flex-1 bg-transparent border-none resize-none h-20 focus:outline-none"
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
                   ></textarea>
                 </div>
                 <div className="flex justify-between items-center mt-3 pt-3 border-t">
                   <div className="flex space-x-2">
                     {/* Icon buttons would go here */}
                   </div>
-                  <Button>
-                    Post
+                  <Button 
+                    onClick={handleCreatePost}
+                    disabled={createPostMutation.isPending}
+                  >
+                    {createPostMutation.isPending ? "Posting..." : "Post"}
                   </Button>
                 </div>
               </div>
               
               {/* Posts */}
-              {posts.map((post) => (
-                <PostCard key={post.id} {...post} />
-              ))}
+              {isLoadingPosts ? (
+                <div className="flex justify-center py-8">
+                  <div className="rounded-md h-12 w-12 border-4 border-t-primary animate-spin"></div>
+                </div>
+              ) : posts.length > 0 ? (
+                posts.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    user={{
+                      name: post.profiles?.full_name || "SDA Member",
+                      username: post.profiles?.username || "member",
+                      avatar: post.profiles?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+                    }}
+                    timestamp={new Date(post.created_at).toLocaleDateString()}
+                    content={post.content}
+                    image={post.image_url || undefined}
+                    likes={post.likes_count || 0}
+                    comments={post.comments_count || 0}
+                    shares={post.shares_count || 0}
+                    liked={post.user_has_liked || false}
+                  />
+                ))
+              ) : (
+                <div className="bordered-card rounded-xl p-8 text-center">
+                  <h3 className="font-medium text-lg mb-2">No posts yet</h3>
+                  <p className="text-muted-foreground mb-4">Be the first to share something with the community!</p>
+                </div>
+              )}
               
               <div className="flex justify-center mt-6">
                 <Button variant="outline" className="px-4">
@@ -173,10 +332,18 @@ const Feed = () => {
                 <div className="bordered-card rounded-xl p-5 mb-6">
                   <h3 className="font-medium mb-4">Suggested for you</h3>
                   <div className="space-y-4">
-                    {suggestedUsers.map((user) => (
+                    {suggestedProfiles.map((profile) => (
                       <ProfileCard 
-                        key={user.username}
-                        user={user}
+                        key={profile.id}
+                        user={{
+                          name: profile.full_name || "SDA Member",
+                          username: profile.username || "member",
+                          avatar: profile.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+                          bio: profile.about,
+                          following: profile.following_count || 0,
+                          followers: profile.followers_count || 0,
+                          isFollowing: profile.user_is_following || false
+                        }}
                         variant="compact"
                         className="w-full"
                       />
@@ -187,7 +354,7 @@ const Feed = () => {
                 <div className="bordered-card rounded-xl p-5">
                   <h3 className="font-medium mb-2">Trending Topics</h3>
                   <div className="space-y-3 mt-4">
-                    {["Design", "Photography", "Technology", "Travel", "Art"].map((topic) => (
+                    {["Sabbath", "Prayer", "Prophecy", "Health", "Service"].map((topic) => (
                       <a 
                         key={topic} 
                         href={`/topic/${topic.toLowerCase()}`}

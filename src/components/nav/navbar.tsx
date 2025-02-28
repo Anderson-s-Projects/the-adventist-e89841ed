@@ -1,15 +1,25 @@
 
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, Search, User, Home, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, Search, User, Home, X, LogOut } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/common/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,6 +45,11 @@ export function Navbar() {
     { name: "Explore", path: "/explore" },
     { name: "Messages", path: "/messages" },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <header
@@ -78,23 +93,49 @@ export function Navbar() {
               />
             </div>
 
-            <Link to="/profile">
-              <Button variant="ghost" size="sm" className="rounded-full p-2 md:hidden">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/feed" className="hidden md:block">
+                  <Button variant="ghost" size="sm" className="rounded-full p-2 md:ml-2">
+                    <Home className="h-5 w-5" />
+                  </Button>
+                </Link>
 
-            <Link to="/feed" className="hidden md:block">
-              <Button variant="ghost" size="sm" className="rounded-full p-2 md:ml-2">
-                <Home className="h-5 w-5" />
-              </Button>
-            </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="hidden md:flex">
+                      Profile
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate("/profile")}>
+                      <User className="h-4 w-4 mr-2" />
+                      My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-            <Link to="/profile" className="hidden md:block">
-              <Button variant="outline" size="sm">
-                Profile
+                <Link to="/profile" className="md:hidden">
+                  <Button variant="ghost" size="sm" className="rounded-full p-2">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => navigate("/auth")}
+                className="hidden md:inline-flex"
+              >
+                Sign In
               </Button>
-            </Link>
+            )}
 
             <Button 
               variant="ghost" 
@@ -134,6 +175,24 @@ export function Navbar() {
                   {link.name}
                 </Link>
               ))}
+              
+              {!user ? (
+                <Link 
+                  to="/auth" 
+                  className="block px-3 py-2 rounded-md text-base font-medium transition-colors bg-primary text-primary-foreground mt-2 text-center"
+                >
+                  Sign In
+                </Link>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-2 flex items-center justify-center"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              )}
             </div>
           </div>
         )}
