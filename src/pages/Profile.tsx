@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
@@ -9,10 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { data: profileData, isLoading: isProfileLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState("posts");
   const [profile, setProfile] = useState({
@@ -60,6 +62,17 @@ const Profile = () => {
       liked: false
     }
   ]);
+  
+  // Check for redirect parameters
+  useEffect(() => {
+    if (location.state && location.state.newUser) {
+      setIsEditing(true);
+      toast({
+        title: "Welcome!",
+        description: "Let's complete your profile to get started.",
+      });
+    }
+  }, [location]);
 
   useEffect(() => {
     if (user) {
@@ -154,6 +167,43 @@ const Profile = () => {
     }
   };
 
+  const uploadAvatar = async (file: File) => {
+    try {
+      // Create a unique file path
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+      
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      // Update the editedProfile with the new avatar URL
+      setEditedProfile({
+        ...editedProfile,
+        avatar_url: publicUrl
+      });
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload avatar image",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const handleSaveProfile = async () => {
     try {
       const { error } = await supabase
@@ -162,6 +212,7 @@ const Profile = () => {
           username: editedProfile.username,
           full_name: editedProfile.full_name,
           about: editedProfile.about,
+          avatar_url: editedProfile.avatar_url,
         })
         .eq('id', user.id);
       
@@ -203,6 +254,7 @@ const Profile = () => {
           onSave={handleSaveProfile}
           onCancel={handleCancelEdit}
           isCurrentUser={true}
+          onAvatarUpload={uploadAvatar}
         />
         
         <div className="mt-8">

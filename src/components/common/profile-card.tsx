@@ -4,6 +4,7 @@ import { Button } from "./button";
 import { useState, ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Upload, ImageIcon } from "lucide-react";
 
 interface ProfileCardProps {
   className?: string;
@@ -38,6 +39,7 @@ interface ProfileCardProps {
     followers: number;
     isFollowing?: boolean;
   };
+  onAvatarUpload?: (file: File) => Promise<void>;
 }
 
 export function ProfileCard({
@@ -51,9 +53,12 @@ export function ProfileCard({
   onCancel,
   isCurrentUser = false,
   variant = "full",
-  user
+  user,
+  onAvatarUpload
 }: ProfileCardProps) {
   const isCompact = variant === "compact";
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   // Use either the profile object or user object based on what's provided
   const displayUser = user || {
@@ -74,6 +79,38 @@ export function ProfileCard({
     }
   };
 
+  const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+        
+        // Update edited profile with new avatar preview
+        if (setEditedProfile && editedProfile) {
+          setEditedProfile({
+            ...editedProfile,
+            avatar_url: reader.result as string
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    if (onAvatarUpload && avatarFile) {
+      await onAvatarUpload(avatarFile);
+    }
+    
+    if (onSave) {
+      onSave();
+    }
+  };
+
   return (
     <div className={cn(
       "bordered-card rounded-xl p-6",
@@ -83,14 +120,31 @@ export function ProfileCard({
         "flex",
         isCompact ? "flex-col items-center text-center" : "items-start"
       )}>
-        <img 
-          src={isEditing ? (editedProfile?.avatar_url || profile.avatar_url) : profile.avatar_url} 
-          alt={profile.full_name} 
-          className={cn(
-            "rounded-full object-cover",
-            isCompact ? "w-20 h-20 mb-4" : "w-24 h-24 mr-6"
+        <div className="relative">
+          <img 
+            src={isEditing ? (avatarPreview || editedProfile?.avatar_url || profile.avatar_url) : profile.avatar_url} 
+            alt={profile.full_name} 
+            className={cn(
+              "rounded-full object-cover",
+              isCompact ? "w-20 h-20 mb-4" : "w-24 h-24 mr-6"
+            )}
+          />
+          
+          {isEditing && (
+            <div className="absolute bottom-0 right-0">
+              <label htmlFor="avatar-upload" className="cursor-pointer bg-primary text-white rounded-full p-2 shadow-md">
+                <Upload size={16} />
+                <input 
+                  id="avatar-upload" 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleAvatarChange}
+                />
+              </label>
+            </div>
           )}
-        />
+        </div>
         
         <div className="flex-1">
           {isEditing ? (
@@ -150,7 +204,7 @@ export function ProfileCard({
           <div className="flex gap-2 mt-4 md:mt-0">
             {isEditing ? (
               <>
-                <Button onClick={onSave}>Save</Button>
+                <Button onClick={handleSave}>Save</Button>
                 <Button variant="outline" onClick={onCancel}>Cancel</Button>
               </>
             ) : (

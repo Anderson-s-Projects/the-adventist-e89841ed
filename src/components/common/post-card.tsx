@@ -1,120 +1,145 @@
 
-import { cn } from "@/lib/utils";
-import { Heart, MessageCircle, Share } from "lucide-react";
-import { Button } from "./button";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+import { Heart, MessageCircle, Share, ExternalLink } from "lucide-react";
+import { Button } from "./button";
 
 interface PostCardProps {
-  className?: string;
   id: string;
   user: {
+    id?: string;
     name: string;
     username: string;
     avatar: string;
-    id?: string;
   };
   timestamp: string;
   content: string;
-  image?: string;
+  image?: string | null;
+  video?: string | null;
+  link?: string | null;
   likes: number;
   comments: number;
   shares: number;
   liked?: boolean;
   onLikeChange?: (id: string, liked: boolean) => void;
+  className?: string;
+  metadata?: {
+    media_url?: string;
+    media_type?: "image" | "video";
+    link_url?: string;
+  }
 }
 
 export function PostCard({
-  className,
   id,
   user,
   timestamp,
   content,
   image,
-  likes: initialLikes,
+  video,
+  link,
+  likes,
   comments,
   shares,
-  liked: initialLiked = false,
+  liked = false,
   onLikeChange,
+  className,
+  metadata
 }: PostCardProps) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [likes, setLikes] = useState(initialLikes);
-  const { user: currentUser } = useAuth();
-  const { toast } = useToast();
+  const [isLiked, setIsLiked] = useState(liked);
+  const [likeCount, setLikeCount] = useState(likes);
+  
+  // Extract media and links from metadata if available
+  const mediaUrl = metadata?.media_url || image || video;
+  const mediaType = metadata?.media_type || (image ? "image" : video ? "video" : null);
+  const linkUrl = metadata?.link_url || link;
 
-  const handleLikeToggle = async () => {
-    if (!currentUser) return;
-    
-    const newLikedState = !liked;
-    setLiked(newLikedState);
-    setLikes(prevLikes => newLikedState ? prevLikes + 1 : prevLikes - 1);
+  const handleLikeToggle = () => {
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    setLikeCount(prevCount => newLikedState ? prevCount + 1 : prevCount - 1);
     
     if (onLikeChange) {
       onLikeChange(id, newLikedState);
     }
-    
-    // Here you would update the like status in your database
-    // This is a placeholder for future implementation
-    toast({
-      title: newLikedState ? "Post liked" : "Post unliked",
-      description: "Your preference has been saved.",
-      duration: 2000,
-    });
   };
 
   return (
-    <div className={cn("bordered-card rounded-xl p-5 mb-4 animate-fade-in card-hover", className)}>
-      <div className="flex items-center mb-3">
+    <div className={cn(
+      "bordered-card rounded-xl p-5 mb-6", 
+      className
+    )}>
+      <div className="flex items-center mb-4">
         <img 
           src={user.avatar} 
           alt={user.name} 
           className="w-10 h-10 rounded-full object-cover mr-3"
-          loading="lazy"
         />
         <div>
-          <h4 className="font-medium text-base">{user.name}</h4>
-          <p className="text-sm text-muted-foreground">@{user.username} · {timestamp}</p>
+          <h3 className="font-semibold">{user.name}</h3>
+          <p className="text-muted-foreground text-sm">@{user.username} · {timestamp}</p>
         </div>
       </div>
-
+      
       <div className="mb-4">
-        <p className="text-balance mb-3">{content}</p>
-        {image && (
-          <div className="mt-3 rounded-lg overflow-hidden bg-muted/50">
-            <img 
-              src={image} 
-              alt="Post image" 
-              className="w-full h-auto object-cover max-h-[28rem]"
-              loading="lazy"
-            />
-          </div>
-        )}
+        <p className="whitespace-pre-line">{content}</p>
       </div>
-
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={cn("py-1 flex items-center gap-1", liked && "text-red-500")}
-            onClick={handleLikeToggle}
-          >
-            <Heart className={cn("h-4 w-4", liked && "fill-red-500")} />
-            <span>{likes}</span>
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="py-1 flex items-center gap-1">
-            <MessageCircle className="h-4 w-4" />
-            <span>{comments}</span>
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="py-1 flex items-center gap-1">
-            <Share className="h-4 w-4" />
-            <span>{shares}</span>
-          </Button>
+      
+      {mediaUrl && (
+        <div className="mb-4 rounded-lg overflow-hidden">
+          {mediaType === "image" ? (
+            <img 
+              src={mediaUrl} 
+              alt="Post content" 
+              className="w-full h-auto rounded-lg"
+            />
+          ) : mediaType === "video" ? (
+            <video 
+              src={mediaUrl} 
+              controls
+              className="w-full rounded-lg"
+            />
+          ) : null}
         </div>
+      )}
+      
+      {linkUrl && (
+        <a 
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mb-4 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+        >
+          <div className="flex items-center">
+            <ExternalLink size={16} className="mr-2 text-primary" />
+            <span className="text-sm truncate">{linkUrl}</span>
+          </div>
+        </a>
+      )}
+      
+      <div className="flex items-center justify-between pt-2 border-t">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex items-center gap-1" 
+          onClick={handleLikeToggle}
+        >
+          <Heart className={cn(
+            "w-4 h-4",
+            isLiked && "fill-red-500 text-red-500"
+          )} />
+          <span>{likeCount}</span>
+        </Button>
+        
+        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+          <MessageCircle className="w-4 h-4" />
+          <span>{comments}</span>
+        </Button>
+        
+        <Button variant="ghost" size="sm" className="flex items-center gap-1">
+          <Share className="w-4 h-4" />
+          <span>{shares}</span>
+        </Button>
       </div>
     </div>
   );

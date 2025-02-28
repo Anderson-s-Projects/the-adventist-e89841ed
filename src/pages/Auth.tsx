@@ -31,13 +31,23 @@ const Auth = () => {
         if (error) throw error;
         navigate("/feed");
       } else {
-        const { error } = await signUp(email, password);
+        const { error, data } = await signUp(email, password);
         if (error) throw error;
-        toast({
-          title: "Account created",
-          description: "Please check your email for verification instructions.",
-        });
-        setActiveTab("signin");
+        
+        // If it's a new signup, redirect to profile page with state
+        if (data?.user) {
+          toast({
+            title: "Account created",
+            description: "Welcome to SDA Connect! Let's set up your profile.",
+          });
+          navigate("/profile", { state: { newUser: true } });
+        } else {
+          toast({
+            title: "Account created",
+            description: "Please check your email for verification instructions.",
+          });
+          setActiveTab("signin");
+        }
       }
     } catch (error) {
       console.error("Authentication error:", error);
