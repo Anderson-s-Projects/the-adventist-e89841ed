@@ -15,10 +15,12 @@ import { FeedSidebar } from "@/components/feed/feed-sidebar";
 import { PostComposer } from "@/components/feed/post-composer";
 import { PostsList } from "@/components/feed/posts-list";
 import { SuggestionsSidebar } from "@/components/feed/suggestions-sidebar";
+import { useState } from "react";
 
 const Feed = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [showComposer, setShowComposer] = useState(false);
 
   // Use our custom hooks to fetch data
   const { data: posts = [], isLoading: isLoadingPosts } = usePosts();
@@ -36,9 +38,9 @@ const Feed = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="pt-20 pb-16">
-        <div className="container max-w-7xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+      <main className="pt-16 pb-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {/* Sidebar - profile and navigation */}
             <div className="hidden md:block">
               <FeedSidebar userProfile={userProfile} />
@@ -46,8 +48,13 @@ const Feed = () => {
             
             {/* Main content - posts */}
             <div className="md:col-span-2 lg:col-span-1">
-              {/* Post composer */}
-              <PostComposer userAvatarUrl={userProfile?.avatar_url} />
+              {/* Post composer - shown all the time on desktop, toggled on mobile */}
+              <div className={`${showComposer ? 'block' : 'hidden'} md:block`}>
+                <PostComposer 
+                  userAvatarUrl={userProfile?.avatar_url}
+                  onPostCreated={() => setShowComposer(false)} 
+                />
+              </div>
               
               {/* Posts */}
               <PostsList posts={posts} isLoading={isLoadingPosts} onLikeChange={handleLikeChange} />
@@ -62,9 +69,13 @@ const Feed = () => {
       </main>
       
       {/* Mobile floating action button */}
-      <div className="fixed right-6 bottom-6 md:hidden">
-        <Button className="w-14 h-14 rounded-full shadow-lg" aria-label="Create post">
-          <Plus className="h-6 w-6" />
+      <div className="fixed right-4 bottom-20 z-10 md:hidden">
+        <Button 
+          className="w-14 h-14 rounded-full shadow-lg"
+          aria-label="Create post"
+          onClick={() => setShowComposer(!showComposer)}
+        >
+          {showComposer ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
         </Button>
       </div>
     </div>

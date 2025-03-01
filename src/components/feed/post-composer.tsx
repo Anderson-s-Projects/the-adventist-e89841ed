@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 interface PostComposerProps {
   onPostCreated?: () => void;
   className?: string;
-  userAvatarUrl?: string; // Added this prop
+  userAvatarUrl?: string;
 }
 
 export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostComposerProps) {
@@ -162,9 +162,9 @@ export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostCo
   };
 
   return (
-    <div className={`bordered-card rounded-xl p-5 ${className}`}>
-      <div className="flex space-x-3">
-        <Avatar className="h-10 w-10">
+    <div className={`bordered-card rounded-xl p-3 sm:p-5 mb-3 sm:mb-5 ${className}`}>
+      <div className="flex space-x-2 sm:space-x-3">
+        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
           <img 
             src={userAvatarUrl || user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"} 
             alt="Avatar" 
@@ -176,25 +176,25 @@ export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostCo
           <Textarea
             placeholder="Share something with the community..."
             value={content}
-            onChange={handleContentChange}
-            className="resize-none min-h-[100px] mb-2"
+            onChange={(e) => setContent(e.target.value)}
+            className="resize-none min-h-[80px] sm:min-h-[100px] mb-2 text-sm sm:text-base"
           />
           
           {/* Media preview */}
           {mediaPreview && (
-            <div className="relative mb-3 mt-2">
+            <div className="relative mb-2 sm:mb-3 mt-2">
               <div className="rounded-lg overflow-hidden border border-border">
                 {mediaType === 'image' ? (
                   <img 
                     src={mediaPreview} 
                     alt="Upload preview" 
-                    className="max-h-[300px] w-auto mx-auto"
+                    className="max-h-[200px] sm:max-h-[300px] w-auto mx-auto"
                   />
                 ) : (
                   <video 
                     src={mediaPreview} 
                     controls
-                    className="max-h-[300px] w-auto mx-auto"
+                    className="max-h-[200px] sm:max-h-[300px] w-auto mx-auto"
                   />
                 )}
               </div>
@@ -209,13 +209,13 @@ export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostCo
           
           {/* Link input */}
           {showLinkInput && (
-            <div className="flex items-center mb-3 mt-2">
+            <div className="flex items-center mb-2 sm:mb-3 mt-2">
               <Input
                 type="url"
                 placeholder="Enter link URL"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
               />
               <Button 
                 variant="ghost" 
@@ -224,6 +224,7 @@ export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostCo
                   setShowLinkInput(false);
                   setLinkUrl("");
                 }}
+                className="ml-1"
               >
                 <X size={16} className="text-red-500" />
               </Button>
@@ -238,48 +239,49 @@ export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostCo
             className="hidden"
           />
           
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex space-x-2">
+          <div className="flex items-center justify-between mt-2 sm:mt-3 flex-wrap gap-2">
+            <div className="flex space-x-1 sm:space-x-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => handleMediaClick('image')}
-                className="flex items-center"
+                className="flex items-center p-1 sm:p-2"
               >
-                <ImageIcon size={16} className="mr-1" />
-                <span className="hidden sm:inline">Image</span>
+                <ImageIcon size={16} className="sm:mr-1" />
+                <span className="hidden sm:inline text-xs sm:text-sm">Image</span>
               </Button>
               
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => handleMediaClick('video')}
-                className="flex items-center"
+                className="flex items-center p-1 sm:p-2"
               >
-                <Video size={16} className="mr-1" />
-                <span className="hidden sm:inline">Video</span>
+                <Video size={16} className="sm:mr-1" />
+                <span className="hidden sm:inline text-xs sm:text-sm">Video</span>
               </Button>
               
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setShowLinkInput(!showLinkInput)}
-                className="flex items-center"
+                className="flex items-center p-1 sm:p-2"
               >
-                <LinkIcon size={16} className="mr-1" />
-                <span className="hidden sm:inline">Link</span>
+                <LinkIcon size={16} className="sm:mr-1" />
+                <span className="hidden sm:inline text-xs sm:text-sm">Link</span>
               </Button>
             </div>
             
             <Button 
               onClick={handlePostSubmit}
               disabled={isSubmitting || (!content.trim() && !mediaFile && !linkUrl)}
-              className="flex items-center"
+              className="flex items-center text-xs sm:text-sm"
+              size="sm"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                  Posting...
+                  <Loader2 size={14} className="mr-1 sm:mr-2 animate-spin" />
+                  <span>Posting...</span>
                 </>
               ) : (
                 'Post'

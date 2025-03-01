@@ -1,3 +1,4 @@
+
 import { Home, Compass, MessageSquare, Calendar, Settings } from "lucide-react";
 import { NavLink } from "@/components/nav/nav-link";
 
@@ -12,11 +13,11 @@ export function FeedSidebar({ userProfile }) {
   };
   
   return (
-    <div className="bordered-card rounded-xl p-5 sticky top-24">
+    <div className="bordered-card rounded-xl p-4 sm:p-5 sticky top-20">
       {userProfile ? (
         <div className="flex flex-col items-center text-center">
           <Avatar 
-            className="h-20 w-20 mb-3 cursor-pointer hover:opacity-90 transition-opacity"
+            className="h-16 w-16 sm:h-20 sm:w-20 mb-3 cursor-pointer hover:opacity-90 transition-opacity"
             onClick={handleProfileClick}
           >
             <img 
@@ -27,27 +28,27 @@ export function FeedSidebar({ userProfile }) {
           </Avatar>
           
           <h3 
-            className="font-semibold text-lg mb-1 cursor-pointer hover:underline"
+            className="font-semibold text-base sm:text-lg mb-1 cursor-pointer hover:underline truncate max-w-full"
             onClick={handleProfileClick}
           >
             {userProfile.full_name}
           </h3>
-          <p className="text-muted-foreground mb-4">@{userProfile.username}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mb-4 truncate max-w-full">@{userProfile.username}</p>
           
           <div className="grid grid-cols-2 w-full gap-4 text-center mb-6">
             <div>
               <p className="font-semibold">{userProfile.following_count || 0}</p>
-              <p className="text-muted-foreground text-sm">Following</p>
+              <p className="text-muted-foreground text-xs sm:text-sm">Following</p>
             </div>
             <div>
               <p className="font-semibold">{userProfile.followers_count || 0}</p>
-              <p className="text-muted-foreground text-sm">Followers</p>
+              <p className="text-muted-foreground text-xs sm:text-sm">Followers</p>
             </div>
           </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center h-40">
-          <div className="animate-pulse bg-muted rounded-full h-20 w-20 mb-3"></div>
+          <div className="animate-pulse bg-muted rounded-full h-16 w-16 sm:h-20 sm:w-20 mb-3"></div>
           <div className="animate-pulse bg-muted h-4 w-24 mb-2"></div>
           <div className="animate-pulse bg-muted h-3 w-20 mb-4"></div>
           <div className="grid grid-cols-2 w-full gap-4 text-center">
@@ -63,7 +64,7 @@ export function FeedSidebar({ userProfile }) {
         </div>
       )}
       
-      <div className="space-y-1">
+      <div className="space-y-1 text-sm">
         <NavLink href="/feed" exact>
           <Home className="mr-2 h-4 w-4" />
           Home
