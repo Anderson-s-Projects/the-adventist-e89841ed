@@ -47,7 +47,9 @@ const Feed = () => {
             {/* Main content - posts */}
             <div className="md:col-span-2 lg:col-span-1">
               {/* Post composer */}
-              <PostComposer userAvatarUrl={userProfile?.avatar_url} />
+              <PostComposer 
+                userAvatarUrl={userProfile?.avatar_url} 
+              />
               
               {/* Posts */}
               <PostsList 

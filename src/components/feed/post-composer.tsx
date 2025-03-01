@@ -19,9 +19,10 @@ import { Input } from "@/components/ui/input";
 interface PostComposerProps {
   onPostCreated?: () => void;
   className?: string;
+  userAvatarUrl?: string; // Added this prop
 }
 
-export function PostComposer({ onPostCreated, className }: PostComposerProps) {
+export function PostComposer({ onPostCreated, className, userAvatarUrl }: PostComposerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [content, setContent] = useState("");
@@ -165,7 +166,7 @@ export function PostComposer({ onPostCreated, className }: PostComposerProps) {
       <div className="flex space-x-3">
         <Avatar className="h-10 w-10">
           <img 
-            src={user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"} 
+            src={userAvatarUrl || user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"} 
             alt="Avatar" 
             className="h-full w-full rounded-full object-cover"
           />
@@ -218,7 +219,7 @@ export function PostComposer({ onPostCreated, className }: PostComposerProps) {
               />
               <Button 
                 variant="ghost" 
-                size="icon"
+                size="sm"
                 onClick={() => {
                   setShowLinkInput(false);
                   setLinkUrl("");
