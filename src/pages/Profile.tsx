@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Navbar } from "@/components/nav/navbar";
@@ -26,106 +25,34 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState("posts");
   
   // Get profile data using custom hook
-const {
-  profile,
-  setProfile,
-  isLoading,
-  userPosts,
-  isCurrentUser,
-  savedPosts,
-  setSavedPosts,
-  isLoadingSaved,
-  fetchSavedPosts
-} = useProfileData(userId);
-
-// Handle unsaving a post
-const handleUnsavePost = async (postId: string) => {
-  try {
-    if (!user?.id) return;
-
-    const { error } = await supabase
-      .from('saved_posts')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('post_id', postId);
-
-    if (error) throw error;
-
-    // Refetch the saved posts to update the UI
-    await fetchSavedPosts();
-
-    toast({
-      title: "Post removed",
-      description: "The post has been removed from your saved items",
-    });
-  } catch (error) {
-    console.error('Error removing saved post:', error);
-    toast({
-      title: "Error",
-      description: "Failed to remove saved post",
-      variant: "destructive"
-    });
-  }
-};
-  
-  // Get profile editing functionality
   const {
-    isEditing,
-    setIsEditing,
-    editedProfile,
-    setEditedProfile,
-    uploadAvatar,
-    handleSaveProfile,
-    handleCancelEdit
-  } = useProfileEdit(profile, setProfile);
-  
-  // Check for redirect parameters
-  useEffect(() => {
-    if (location.state && location.state.newUser && isCurrentUser) {
-      setIsEditing(true);
-      toast({
-        title: "Welcome!",
-        description: "Let's complete your profile to get started."
-      });
-    }
-  }, [location, isCurrentUser]);
-  
-  // Update profile from currentUserProfile when available
-  useEffect(() => {
-    if (currentUserProfile && isCurrentUser) {
-      setProfile(currentUserProfile);
-      setEditedProfile(currentUserProfile);
-    }
-  }, [currentUserProfile, isCurrentUser]);
-  
-  // Fetch saved posts when viewing saved tab
-  useEffect(() => {
-    if (isCurrentUser && activeTab === "saved") {
-      fetchSavedPosts();
-    }
-  }, [isCurrentUser, activeTab]);
-  
-  // Handle post like changes
-  const handlePostLikeChange = async (postId: string, liked: boolean) => {
-    console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
-  };
-  
+    profile,
+    setProfile,
+    isLoading,
+    userPosts,
+    isCurrentUser,
+    savedPosts,
+    setSavedPosts,
+    isLoadingSaved,
+    fetchSavedPosts
+  } = useProfileData(userId);
+
   // Handle unsaving a post
   const handleUnsavePost = async (postId: string) => {
     try {
       if (!user?.id) return;
-      
+
       const { error } = await supabase
         .from('saved_posts')
         .delete()
         .eq('user_id', user.id)
         .eq('post_id', postId);
-      
+
       if (error) throw error;
-      
-      // Update UI
-      setSavedPosts(savedPosts.filter(post => post.id !== postId));
-      
+
+      // Refetch the saved posts to update the UI
+      await fetchSavedPosts();
+
       toast({
         title: "Post removed",
         description: "The post has been removed from your saved items",
@@ -139,19 +66,91 @@ const handleUnsavePost = async (postId: string) => {
       });
     }
   };
-  
+
+  // Get profile editing functionality
+  const {
+    isEditing,
+    setIsEditing,
+    editedProfile,
+    setEditedProfile,
+    uploadAvatar,
+    handleSaveProfile,
+    handleCancelEdit
+  } = useProfileEdit(profile, setProfile);
+
+  // Check for redirect parameters
+  useEffect(() => {
+    if (location.state && location.state.newUser && isCurrentUser) {
+      setIsEditing(true);
+      toast({
+        title: "Welcome!",
+        description: "Let's complete your profile to get started."
+      });
+    }
+  }, [location, isCurrentUser]);
+
+  // Update profile from currentUserProfile when available
+  useEffect(() => {
+    if (currentUserProfile && isCurrentUser) {
+      setProfile(currentUserProfile);
+      setEditedProfile(currentUserProfile);
+    }
+  }, [currentUserProfile, isCurrentUser]);
+
+  // Fetch saved posts when viewing saved tab
+  useEffect(() => {
+    if (isCurrentUser && activeTab === "saved") {
+      fetchSavedPosts();
+    }
+  }, [isCurrentUser, activeTab]);
+
+  // Handle post like changes
+  const handlePostLikeChange = async (postId: string, liked: boolean) => {
+    console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
+  };
+
+  // Handle sharing a post
+  const handleSharePost = async (postId: string) => {
+    try {
+      const postUrl = `${window.location.origin}/post/${postId}`;
+
+      if (navigator.share) {
+        await navigator.share({
+          title: "Check out this post!",
+          url: postUrl
+        });
+        toast({
+          title: "Post Shared",
+          description: "The post has been successfully shared.",
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast({
+          title: "Link Copied",
+          description: "The post link has been copied to your clipboard.",
+        });
+      }
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      toast({
+        title: "Error",
+        description: "Failed to share the post.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle following a user
   const handleFollow = () => {
-    // In a real app, this would connect to your database
     toast({
       title: "Coming soon",
       description: "The follow feature is under development."
     });
   };
-  
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
       <main className="pt-20 pb-16 container max-w-4xl mx-auto px-4">
         <ProfileCard 
           profile={profile} 
@@ -164,13 +163,13 @@ const handleUnsavePost = async (postId: string) => {
           isCurrentUser={isCurrentUser} 
           onAvatarUpload={uploadAvatar} 
         />
-        
+
         {!isCurrentUser && (
           <div className="mt-4 flex justify-center">
             <Button onClick={handleFollow}>Follow</Button>
           </div>
         )}
-        
+
         <div className="mt-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 py-0 px-[9px]">
@@ -178,29 +177,14 @@ const handleUnsavePost = async (postId: string) => {
               <TabsTrigger value="saved" className="py-0">Saved</TabsTrigger>
               <TabsTrigger value="activity" className="py-0">Activity</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="posts" className="mt-6">
               <ProfilePosts 
                 userPosts={userPosts} 
                 isCurrentUser={isCurrentUser} 
                 onLikeChange={handlePostLikeChange} 
+                onShare={handleSharePost} 
               />
-            </TabsContent>
-            
-            <TabsContent value="saved" className="mt-6">
-              <ProfileSavedPosts 
-                savedPosts={savedPosts}
-                isCurrentUser={isCurrentUser}
-                isLoading={isLoadingSaved}
-                onLikeChange={handlePostLikeChange}
-                onSaveChange={(postId, saved) => {
-                  if (!saved) handleUnsavePost(postId);
-                }}
-              />
-            </TabsContent>
-            
-            <TabsContent value="activity" className="mt-6">
-              <ProfileActivity />
             </TabsContent>
           </Tabs>
         </div>
