@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
 import { ProfileCard } from "@/components/common/profile-card";
@@ -16,7 +16,8 @@ const Profile = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: profileData, isLoading: isProfileLoading } = useUserProfile();
+  const { userId } = useParams();
+  const { data: currentUserProfile, isLoading: isCurrentProfileLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState("posts");
   const [profile, setProfile] = useState({
     id: "",
@@ -31,6 +32,7 @@ const Profile = () => {
   const [editedProfile, setEditedProfile] = useState({ ...profile });
   const [isLoading, setIsLoading] = useState(true);
   const [userPosts, setUserPosts] = useState([]);
+  const [isCurrentUser, setIsCurrentUser] = useState(true);
   const [savedItems, setSavedItems] = useState([
     {
       id: "1",
@@ -64,31 +66,82 @@ const Profile = () => {
     }
   ]);
   
+  // Check if we're viewing another user's profile
+  useEffect(() => {
+    if (userId && user?.id !== userId) {
+      setIsCurrentUser(false);
+      fetchOtherUserProfile(userId);
+    } else {
+      setIsCurrentUser(true);
+    }
+  }, [userId, user]);
+
   // Check for redirect parameters
   useEffect(() => {
-    if (location.state && location.state.newUser) {
+    if (location.state && location.state.newUser && isCurrentUser) {
       setIsEditing(true);
       toast({
         title: "Welcome!",
         description: "Let's complete your profile to get started.",
       });
     }
-  }, [location]);
+  }, [location, isCurrentUser]);
 
   useEffect(() => {
-    if (user) {
+    if (user && isCurrentUser) {
       fetchProfile();
-      fetchUserPosts();
     }
-  }, [user]);
+  }, [user, isCurrentUser]);
 
   useEffect(() => {
-    if (profileData) {
-      setProfile(profileData);
-      setEditedProfile(profileData);
+    if (currentUserProfile && isCurrentUser) {
+      setProfile(currentUserProfile);
+      setEditedProfile(currentUserProfile);
       setIsLoading(false);
     }
-  }, [profileData]);
+  }, [currentUserProfile, isCurrentUser]);
+
+  // When viewing a profile (current or other), fetch their posts
+  useEffect(() => {
+    if (profile.id) {
+      fetchUserPosts(profile.id);
+    }
+  }, [profile.id]);
+
+  const fetchOtherUserProfile = async (profileId) => {
+    setIsLoading(true);
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (profileData) {
+        setProfile({
+          id: profileData.id || "",
+          username: profileData.username || "User",
+          full_name: profileData.full_name || "SDA Member",
+          avatar_url: profileData.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
+          about: profileData.about || "SDA community member",
+          followers_count: 0,
+          following_count: 0,
+        });
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -127,7 +180,7 @@ const Profile = () => {
     }
   };
 
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = async (profileId) => {
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -135,7 +188,7 @@ const Profile = () => {
           *,
           profiles:user_id (username, full_name, avatar_url)
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', profileId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -162,10 +215,18 @@ const Profile = () => {
       console.error('Error fetching user posts:', error);
       toast({
         title: "Error",
-        description: "Failed to load your posts",
+        description: "Failed to load posts",
         variant: "destructive",
       });
     }
+  };
+
+  const handleFollow = () => {
+    // In a real app, this would connect to your database
+    toast({
+      title: "Coming soon",
+      description: "The follow feature is under development.",
+    });
   };
 
   // Fixed the return type to void instead of string
@@ -253,9 +314,15 @@ const Profile = () => {
           onEdit={() => setIsEditing(true)}
           onSave={handleSaveProfile}
           onCancel={handleCancelEdit}
-          isCurrentUser={true}
+          isCurrentUser={isCurrentUser}
           onAvatarUpload={uploadAvatar}
         />
+        
+        {!isCurrentUser && (
+          <div className="mt-4 flex justify-center">
+            <Button onClick={handleFollow}>Follow</Button>
+          </div>
+        )}
         
         <div className="mt-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -273,18 +340,36 @@ const Profile = () => {
               ) : (
                 <div className="bordered-card rounded-xl p-8 text-center">
                   <h3 className="font-medium text-lg mb-2">No posts yet</h3>
-                  <p className="text-muted-foreground mb-4">You haven't shared anything with the community yet.</p>
-                  <Button onClick={() => window.location.href = '/feed'}>
-                    Create Your First Post
-                  </Button>
+                  <p className="text-muted-foreground mb-4">
+                    {isCurrentUser ? "You haven't shared anything with the community yet." : "This user hasn't shared anything yet."}
+                  </p>
+                  {isCurrentUser && (
+                    <Button onClick={() => window.location.href = '/feed'}>
+                      Create Your First Post
+                    </Button>
+                  )}
                 </div>
               )}
             </TabsContent>
             
             <TabsContent value="saved" className="mt-6">
-              {savedItems.map((item) => (
-                <PostCard key={item.id} {...item} />
-              ))}
+              {isCurrentUser ? (
+                savedItems.length > 0 ? (
+                  savedItems.map((item) => (
+                    <PostCard key={item.id} {...item} />
+                  ))
+                ) : (
+                  <div className="bordered-card rounded-xl p-8 text-center">
+                    <h3 className="font-medium text-lg mb-2">No saved items</h3>
+                    <p className="text-muted-foreground">You haven't saved any posts yet.</p>
+                  </div>
+                )
+              ) : (
+                <div className="bordered-card rounded-xl p-8 text-center">
+                  <h3 className="font-medium text-lg mb-2">Private content</h3>
+                  <p className="text-muted-foreground">Saved items are only visible to the account owner.</p>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="activity" className="mt-6">

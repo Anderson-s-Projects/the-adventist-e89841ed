@@ -1,69 +1,59 @@
+import { Button } from "@/components/common/button";
+import { useNavigate } from "react-router-dom";
 
-import { ProfileCard } from "@/components/common/profile-card";
-
-interface Profile {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  about: string | null;
-  following_count?: number;
-  followers_count?: number;
-  user_is_following?: boolean;
-}
-
-interface SuggestionsSidebarProps {
-  suggestedProfiles: Profile[];
-}
-
-export function SuggestionsSidebar({ suggestedProfiles }: SuggestionsSidebarProps) {
+export function SuggestionsSidebar({ suggestedProfiles = [] }) {
+  const navigate = useNavigate();
+  
+  const handleProfileClick = (userId) => {
+    if (userId) {
+      navigate(`/profile/${userId}`);
+    }
+  };
+  
   return (
-    <div className="sticky top-24">
-      <div className="bordered-card rounded-xl p-5 mb-6">
-        <h3 className="font-medium mb-4">Suggested for you</h3>
+    <div className="bordered-card rounded-xl p-5 sticky top-24">
+      <h3 className="font-semibold text-lg mb-4">Suggested for you</h3>
+      
+      {suggestedProfiles.length > 0 ? (
         <div className="space-y-4">
           {suggestedProfiles.map((profile) => (
-            <ProfileCard 
-              key={profile.id}
-              profile={{
-                id: profile.id,
-                username: profile.username || "member",
-                full_name: profile.full_name || "SDA Member",
-                avatar_url: profile.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-                about: profile.about || "SDA community member",
-                following_count: profile.following_count || 0,
-                followers_count: profile.followers_count || 0,
-              }}
-              user={{
-                name: profile.full_name || "SDA Member",
-                username: profile.username || "member",
-                avatar: profile.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
-                bio: profile.about,
-                following: profile.following_count || 0,
-                followers: profile.followers_count || 0,
-                isFollowing: profile.user_is_following || false
-              }}
-              variant="compact"
-              className="w-full"
-            />
+            <div key={profile.id} className="flex items-center">
+              <img 
+                src={profile.avatar_url} 
+                alt={profile.username} 
+                className="h-10 w-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleProfileClick(profile.id)}
+              />
+              <div className="flex-1 min-w-0">
+                <h4 
+                  className="font-medium truncate cursor-pointer hover:underline"
+                  onClick={() => handleProfileClick(profile.id)}
+                >
+                  {profile.full_name}
+                </h4>
+                <p className="text-muted-foreground text-sm truncate">@{profile.username}</p>
+              </div>
+              <Button size="sm" variant="outline" className="flex-shrink-0">
+                Follow
+              </Button>
+            </div>
           ))}
         </div>
-      </div>
+      ) : (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center">
+              <div className="bg-muted h-10 w-10 rounded-full mr-3 animate-pulse"></div>
+              <div className="flex-1">
+                <div className="bg-muted h-4 w-24 mb-1 animate-pulse"></div>
+                <div className="bg-muted h-3 w-20 animate-pulse"></div>
+              </div>
+              <div className="bg-muted h-8 w-16 rounded-md animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      )}
       
-      <div className="bordered-card rounded-xl p-5">
-        <h3 className="font-medium mb-2">Trending Topics</h3>
-        <div className="space-y-3 mt-4">
-          {["Sabbath", "Prayer", "Prophecy", "Health", "Service"].map((topic) => (
-            <a 
-              key={topic} 
-              href={`/topic/${topic.toLowerCase()}`}
-              className="block px-3 py-2 rounded-md text-sm bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              #{topic}
-            </a>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

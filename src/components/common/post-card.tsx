@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Heart, MessageCircle, Share, ExternalLink } from "lucide-react";
 import { Button } from "./button";
+import { useNavigate } from "react-router-dom";
 
 interface PostCardProps {
   id: string;
@@ -48,6 +48,7 @@ export function PostCard({
 }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(liked);
   const [likeCount, setLikeCount] = useState(likes);
+  const navigate = useNavigate();
   
   // Extract media and links from metadata if available
   const mediaUrl = metadata?.media_url || image || video;
@@ -64,6 +65,16 @@ export function PostCard({
     }
   };
 
+  const handleAvatarClick = () => {
+    // Navigate to user profile if they have an ID
+    if (user.id) {
+      navigate(`/profile/${user.id}`);
+    } else {
+      // Otherwise navigate to the general profile page
+      navigate('/profile');
+    }
+  };
+
   return (
     <div className={cn(
       "bordered-card rounded-xl p-5 mb-6", 
@@ -73,10 +84,16 @@ export function PostCard({
         <img 
           src={user.avatar} 
           alt={user.name} 
-          className="w-10 h-10 rounded-full object-cover mr-3"
+          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={handleAvatarClick}
         />
         <div>
-          <h3 className="font-semibold">{user.name}</h3>
+          <h3 
+            className="font-semibold cursor-pointer hover:underline" 
+            onClick={handleAvatarClick}
+          >
+            {user.name}
+          </h3>
           <p className="text-muted-foreground text-sm">@{user.username} · {timestamp}</p>
         </div>
       </div>

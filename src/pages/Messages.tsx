@@ -2,26 +2,53 @@
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
 import { Search, Send, Phone, Video, MoreVertical, MessageCircle, Edit } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+
+interface Message {
+  id: string;
+  text: string;
+  fromMe: boolean;
+  time: string;
+}
+
+interface Conversation {
+  id: number;
+  user: {
+    id: string;
+    name: string;
+    avatar: string;
+    status: "online" | "offline";
+  };
+  messages: Message[];
+  lastMessageTime: string;
+  unread: number;
+}
 
 const Messages = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [selectedChat, setSelectedChat] = useState<number | null>(1);
   const [messageText, setMessageText] = useState<string>("");
-  
-  // Mock data for conversations
-  const conversations = [
+  const [conversations, setConversations] = useState<Conversation[]>([
+    // Mock data for conversations
     {
       id: 1,
       user: {
+        id: "user-alex",
         name: "Alex Johnson",
         avatar: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80",
         status: "online"
       },
       messages: [
-        { id: 1, text: "Hey, how's it going?", fromMe: false, time: "2:34 PM" },
-        { id: 2, text: "I'm good, just working on that design project we talked about. How about you?", fromMe: true, time: "2:35 PM" },
-        { id: 3, text: "Nice! I'd love to see it when you're done. I'm just relaxing today.", fromMe: false, time: "2:38 PM" },
+        { id: "1", text: "Hey, how's it going?", fromMe: false, time: "2:34 PM" },
+        { id: "2", text: "I'm good, just working on that design project we talked about. How about you?", fromMe: true, time: "2:35 PM" },
+        { id: "3", text: "Nice! I'd love to see it when you're done. I'm just relaxing today.", fromMe: false, time: "2:38 PM" },
       ],
       lastMessageTime: "2:38 PM",
       unread: 0
@@ -29,13 +56,14 @@ const Messages = () => {
     {
       id: 2,
       user: {
+        id: "user-emma",
         name: "Emma Smith",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80",
         status: "offline"
       },
       messages: [
-        { id: 1, text: "Did you see the latest update?", fromMe: false, time: "Yesterday" },
-        { id: 2, text: "Yes, it looks amazing! I'm excited to try it out.", fromMe: true, time: "Yesterday" },
+        { id: "1", text: "Did you see the latest update?", fromMe: false, time: "Yesterday" },
+        { id: "2", text: "Yes, it looks amazing! I'm excited to try it out.", fromMe: true, time: "Yesterday" },
       ],
       lastMessageTime: "Yesterday",
       unread: 0
@@ -43,12 +71,13 @@ const Messages = () => {
     {
       id: 3,
       user: {
+        id: "user-david",
         name: "David Chen",
         avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80",
         status: "online"
       },
       messages: [
-        { id: 1, text: "Hey, can you send me that file?", fromMe: false, time: "10:15 AM" },
+        { id: "1", text: "Hey, can you send me that file?", fromMe: false, time: "10:15 AM" },
       ],
       lastMessageTime: "10:15 AM",
       unread: 1
@@ -56,28 +85,69 @@ const Messages = () => {
     {
       id: 4,
       user: {
+        id: "user-sophia",
         name: "Sophia Lee",
         avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=100&h=100&q=80",
         status: "online"
       },
       messages: [
-        { id: 1, text: "Are we still meeting today?", fromMe: false, time: "8:45 AM" },
-        { id: 2, text: "Yes, at the usual place at 6pm. Does that work?", fromMe: true, time: "8:47 AM" },
-        { id: 3, text: "Perfect, see you then!", fromMe: false, time: "8:50 AM" },
+        { id: "1", text: "Are we still meeting today?", fromMe: false, time: "8:45 AM" },
+        { id: "2", text: "Yes, at the usual place at 6pm. Does that work?", fromMe: true, time: "8:47 AM" },
+        { id: "3", text: "Perfect, see you then!", fromMe: false, time: "8:50 AM" },
       ],
       lastMessageTime: "8:50 AM",
       unread: 0
     },
-  ];
+  ]);
 
   const selectedConversation = conversations.find(conv => conv.id === selectedChat);
 
   const handleSendMessage = () => {
-    if (messageText.trim()) {
-      // In a real app, you would handle sending messages to the backend here
+    if (messageText.trim() && selectedChat) {
+      // Create a new message
+      const newMessage = {
+        id: Date.now().toString(),
+        text: messageText,
+        fromMe: true,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      // Update conversations state with the new message
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === selectedChat 
+            ? {
+                ...conv,
+                messages: [...conv.messages, newMessage],
+                lastMessageTime: newMessage.time
+              }
+            : conv
+        )
+      );
+
+      // In a real app, you would send to the backend here
       console.log("Sending message:", messageText);
+      
+      toast({
+        title: "Message sent",
+        description: "Your message has been delivered",
+      });
+
+      // Clear the input
       setMessageText("");
     }
+  };
+
+  const handleAvatarClick = (userId: string) => {
+    // Navigate to user profile
+    navigate(`/profile/${userId}`);
+  };
+
+  const handleNewMessage = () => {
+    toast({
+      title: "Coming soon",
+      description: "This feature is still in development.",
+    });
   };
 
   return (
@@ -122,7 +192,11 @@ const Messages = () => {
                         <img 
                           src={conversation.user.avatar} 
                           alt={conversation.user.name} 
-                          className="w-12 h-12 rounded-full object-cover"
+                          className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAvatarClick(conversation.user.id);
+                          }}
                         />
                         <span className={cn(
                           "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
@@ -150,7 +224,7 @@ const Messages = () => {
                 </div>
                 
                 <div className="p-3 border-t border-border">
-                  <Button variant="outline" className="w-full" size="sm">
+                  <Button variant="outline" className="w-full" size="sm" onClick={handleNewMessage}>
                     <Edit className="h-4 w-4 mr-2" />
                     New Message
                   </Button>
@@ -167,10 +241,16 @@ const Messages = () => {
                         <img 
                           src={selectedConversation.user.avatar} 
                           alt={selectedConversation.user.name} 
-                          className="w-10 h-10 rounded-full object-cover mr-3"
+                          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => handleAvatarClick(selectedConversation.user.id)}
                         />
                         <div>
-                          <h3 className="font-medium">{selectedConversation.user.name}</h3>
+                          <h3 
+                            className="font-medium cursor-pointer hover:underline"
+                            onClick={() => handleAvatarClick(selectedConversation.user.id)}
+                          >
+                            {selectedConversation.user.name}
+                          </h3>
                           <p className="text-xs text-muted-foreground">
                             {selectedConversation.user.status === "online" ? "Online" : "Offline"}
                           </p>
@@ -234,6 +314,7 @@ const Messages = () => {
                           size="sm" 
                           className="ml-2 rounded-full p-2 aspect-square"
                           onClick={handleSendMessage}
+                          disabled={!messageText.trim()}
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -248,7 +329,7 @@ const Messages = () => {
                       <p className="text-muted-foreground mb-4">
                         Select a conversation or start a new one
                       </p>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleNewMessage}>
                         <Edit className="h-4 w-4 mr-2" />
                         New Message
                       </Button>
