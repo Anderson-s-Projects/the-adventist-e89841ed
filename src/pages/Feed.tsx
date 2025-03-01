@@ -16,6 +16,7 @@ import { PostComposer } from "@/components/feed/post-composer";
 import { PostsList } from "@/components/feed/posts-list";
 import { SuggestionsSidebar } from "@/components/feed/suggestions-sidebar";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Feed = () => {
   const { user } = useAuth();
@@ -28,10 +29,37 @@ const Feed = () => {
   const { data: suggestedProfiles = [] } = useSuggestedProfiles();
 
   // Handle like toggling
-  const handleLikeChange = (postId: string, liked: boolean) => {
+  const handleLikeChange = async (postId: string, liked: boolean) => {
     console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
-    // Here we would update the database with the like status
-    // For now we just update the UI through the PostCard component's internal state
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to like posts",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Update likes count in the database
+      const { error } = await supabase
+        .from('posts')
+        .update({ 
+          likes_count: liked ? supabase.rpc('increment', { row_id: postId, table_name: 'posts', column_name: 'likes_count' }) 
+                          : supabase.rpc('decrement', { row_id: postId, table_name: 'posts', column_name: 'likes_count' })
+        })
+        .eq('id', postId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error updating like status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update like status",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -57,7 +85,11 @@ const Feed = () => {
               </div>
               
               {/* Posts */}
-              <PostsList posts={posts} isLoading={isLoadingPosts} onLikeChange={handleLikeChange} />
+              <PostsList 
+                posts={posts} 
+                isLoading={isLoadingPosts} 
+                onLikeChange={handleLikeChange} 
+              />
             </div>
             
             {/* Right sidebar - suggested users */}

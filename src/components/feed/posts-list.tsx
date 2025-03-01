@@ -1,6 +1,8 @@
 
 import { PostCard } from "@/components/common/post-card";
 import { Button } from "@/components/common/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Post {
   id: string;
@@ -16,7 +18,9 @@ interface Post {
   likes_count?: number;
   comments_count?: number;
   shares_count?: number;
+  saves_count?: number;
   user_has_liked?: boolean;
+  user_has_saved?: boolean;
 }
 
 interface PostsListProps {
@@ -26,6 +30,13 @@ interface PostsListProps {
 }
 
 export function PostsList({ posts, isLoading, onLikeChange }: PostsListProps) {
+  const { toast } = useToast();
+
+  const handleSaveChange = async (postId: string, saved: boolean) => {
+    console.log(`Post ${postId} ${saved ? 'saved' : 'unsaved'}`);
+    // This is handled within the PostCard component with database updates
+  };
+
   return (
     <>
       {isLoading ? (
@@ -50,7 +61,9 @@ export function PostsList({ posts, isLoading, onLikeChange }: PostsListProps) {
             comments={post.comments_count || 0}
             shares={post.shares_count || 0}
             liked={post.user_has_liked || false}
+            saved={post.user_has_saved || false}
             onLikeChange={onLikeChange}
+            onSaveChange={handleSaveChange}
           />
         ))
       ) : (

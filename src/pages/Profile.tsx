@@ -71,6 +71,8 @@ const Profile = () => {
     shares: 7,
     liked: false
   }]);
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
 
   // Check if we're viewing another user's profile
   useEffect(() => {
@@ -111,6 +113,13 @@ const Profile = () => {
       fetchUserPosts(profile.id);
     }
   }, [profile.id]);
+
+  // Fetch saved posts when viewing saved tab and it's the current user
+  useEffect(() => {
+    if (isCurrentUser && activeTab === "saved") {
+      fetchSavedPosts();
+    }
+  }, [isCurrentUser, activeTab]);
   const fetchOtherUserProfile = async profileId => {
     setIsLoading(true);
     try {
@@ -211,6 +220,101 @@ const Profile = () => {
       });
     }
   };
+
+  const fetchSavedPosts = async () => {
+    if (!user || !isCurrentUser) return;
+    
+    setIsLoadingSaved(true);
+    try {
+      // Get the saved post IDs
+      const { data: savedData, error: savedError } = await supabase
+        .from('saved_posts')
+        .select('post_id')
+        .eq('user_id', user.id);
+      
+      if (savedError) throw savedError;
+      
+      if (savedData && savedData.length > 0) {
+        // Get the actual posts
+        const postIds = savedData.map(item => item.post_id);
+        
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select(`
+            *,
+            profiles:user_id (username, full_name, avatar_url)
+          `)
+          .in('id', postIds)
+          .order('created_at', { ascending: false });
+        
+        if (postsError) throw postsError;
+        
+        if (postsData) {
+          setSavedPosts(postsData.map(post => ({
+            id: post.id,
+            user: {
+              id: post.user_id,
+              name: post.profiles?.full_name || "SDA Member",
+              username: post.profiles?.username || "member",
+              avatar: post.profiles?.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+            },
+            timestamp: new Date(post.created_at).toLocaleDateString(),
+            content: post.content,
+            image: post.image_url,
+            likes: post.likes_count || 0,
+            comments: post.comments_count || 0,
+            shares: post.shares_count || 0,
+            liked: false,
+            saved: true
+          })));
+        }
+      } else {
+        setSavedPosts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching saved posts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load saved posts",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSaved(false);
+    }
+  };
+
+  // Handle post like changes
+  const handlePostLikeChange = async (postId, liked) => {
+    console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
+  };
+
+  // Handle unsaving a post
+  const handleUnsavePost = async (postId) => {
+    try {
+      const { error } = await supabase
+        .from('saved_posts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('post_id', postId);
+      
+      if (error) throw error;
+      
+      // Update UI
+      setSavedPosts(savedPosts.filter(post => post.id !== postId));
+      
+      toast({
+        title: "Post removed",
+        description: "The post has been removed from your saved items",
+      });
+    } catch (error) {
+      console.error('Error removing saved post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove saved post",
+        variant: "destructive"
+      });
+    }
+  };
   const handleFollow = () => {
     // In a real app, this would connect to your database
     toast({
@@ -303,7 +407,7 @@ const Profile = () => {
             </TabsList>
             
             <TabsContent value="posts" className="mt-6">
-              {userPosts.length > 0 ? userPosts.map((post, index) => <PostCard key={post.id} {...post} />) : <div className="bordered-card rounded-xl p-8 text-center">
+              {userPosts.length > 0 ? userPosts.map((post, index) => <PostCard key={post.id} {...post} onLikeChange={handlePostLikeChange} />) : <div className="bordered-card rounded-xl p-8 text-center">
                   <h3 className="font-medium text-lg mb-2">No posts yet</h3>
                   <p className="text-muted-foreground mb-4">
                     {isCurrentUser ? "You haven't shared anything with the community yet." : "This user hasn't shared anything yet."}
@@ -315,7 +419,11 @@ const Profile = () => {
             </TabsContent>
             
             <TabsContent value="saved" className="mt-6">
-              {isCurrentUser ? savedItems.length > 0 ? savedItems.map(item => <PostCard key={item.id} {...item} />) : <div className="bordered-card rounded-xl p-8 text-center">
+              {isCurrentUser ? isLoadingSaved ? <div className="flex justify-center py-8">
+                    <div className="rounded-md h-12 w-12 border-4 border-t-primary animate-spin"></div>
+                  </div> : savedPosts.length > 0 ? savedPosts.map(post => <PostCard key={post.id} {...post} onLikeChange={handlePostLikeChange} onSaveChange={(postId, saved) => {
+                        if (!saved) handleUnsavePost(postId);
+                      }} />) : <div className="bordered-card rounded-xl p-8 text-center">
                     <h3 className="font-medium text-lg mb-2">No saved items</h3>
                     <p className="text-muted-foreground">You haven't saved any posts yet.</p>
                   </div> : <div className="bordered-card rounded-xl p-8 text-center">
