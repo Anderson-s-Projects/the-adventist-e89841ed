@@ -26,16 +26,47 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState("posts");
   
   // Get profile data using custom hook
-  const {
-    profile,
-    setProfile,
-    isLoading,
-    userPosts,
-    isCurrentUser,
-    savedPosts,
-    isLoadingSaved,
-    fetchSavedPosts
-  } = useProfileData(userId);
+const {
+  profile,
+  setProfile,
+  isLoading,
+  userPosts,
+  isCurrentUser,
+  savedPosts,
+  setSavedPosts,
+  isLoadingSaved,
+  fetchSavedPosts
+} = useProfileData(userId);
+
+// Handle unsaving a post
+const handleUnsavePost = async (postId: string) => {
+  try {
+    if (!user?.id) return;
+
+    const { error } = await supabase
+      .from('saved_posts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('post_id', postId);
+
+    if (error) throw error;
+
+    // Refetch the saved posts to update the UI
+    await fetchSavedPosts();
+
+    toast({
+      title: "Post removed",
+      description: "The post has been removed from your saved items",
+    });
+  } catch (error) {
+    console.error('Error removing saved post:', error);
+    toast({
+      title: "Error",
+      description: "Failed to remove saved post",
+      variant: "destructive"
+    });
+  }
+};
   
   // Get profile editing functionality
   const {
