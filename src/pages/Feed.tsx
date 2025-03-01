@@ -1,4 +1,3 @@
-
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
 import { Plus } from "lucide-react";
@@ -15,25 +14,33 @@ import { FeedSidebar } from "@/components/feed/feed-sidebar";
 import { PostComposer } from "@/components/feed/post-composer";
 import { PostsList } from "@/components/feed/posts-list";
 import { SuggestionsSidebar } from "@/components/feed/suggestions-sidebar";
-
 const Feed = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+
   // Use our custom hooks to fetch data
-  const { data: posts = [], isLoading: isLoadingPosts } = usePosts();
-  const { data: userProfile } = useUserProfile();
-  const { data: suggestedProfiles = [] } = useSuggestedProfiles();
-  
+  const {
+    data: posts = [],
+    isLoading: isLoadingPosts
+  } = usePosts();
+  const {
+    data: userProfile
+  } = useUserProfile();
+  const {
+    data: suggestedProfiles = []
+  } = useSuggestedProfiles();
+
   // Handle like toggling
   const handleLikeChange = (postId: string, liked: boolean) => {
     console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
     // Here we would update the database with the like status
     // For now we just update the UI through the PostCard component's internal state
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="pt-20 pb-16">
@@ -47,16 +54,10 @@ const Feed = () => {
             {/* Main content - posts */}
             <div className="md:col-span-2 lg:col-span-1">
               {/* Post composer */}
-              <PostComposer 
-                userAvatarUrl={userProfile?.avatar_url} 
-              />
+              <PostComposer userAvatarUrl={userProfile?.avatar_url} />
               
               {/* Posts */}
-              <PostsList 
-                posts={posts} 
-                isLoading={isLoadingPosts} 
-                onLikeChange={handleLikeChange} 
-              />
+              <PostsList posts={posts} isLoading={isLoadingPosts} onLikeChange={handleLikeChange} />
             </div>
             
             {/* Right sidebar - suggested users */}
@@ -69,12 +70,8 @@ const Feed = () => {
       
       {/* Mobile floating action button */}
       <div className="fixed right-6 bottom-6 md:hidden">
-        <Button className="w-14 h-14 rounded-full shadow-elevated">
-          <Plus />
-        </Button>
+        
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Feed;
