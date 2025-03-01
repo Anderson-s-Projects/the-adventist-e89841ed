@@ -1,7 +1,7 @@
 
 import { Navbar } from "@/components/nav/navbar";
 import { Button } from "@/components/common/button";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
