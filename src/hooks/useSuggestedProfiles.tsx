@@ -18,22 +18,38 @@ export function useSuggestedProfiles() {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ["suggestedProfiles"],
+    queryKey: ["suggestedProfiles", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       
-      const { data, error } = await supabase
+      // Fetch profiles that are not the current user
+      const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .neq("id", user.id)
         .limit(3);
       
-      if (error) {
-        console.error("Error fetching suggested profiles:", error);
-        throw error;
+      if (profilesError) {
+        console.error("Error fetching suggested profiles:", profilesError);
+        throw profilesError;
       }
       
-      return data.map((profile): Profile => ({
+      // Get which profiles the user is following
+      const { data: followingData, error: followingError } = await supabase
+        .from("user_connections")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      
+      if (followingError) {
+        console.error("Error fetching following data:", followingError);
+      }
+      
+      // Create a set of followed user IDs for faster lookup
+      const followingSet = new Set(
+        (followingData || []).map(item => item.following_id)
+      );
+      
+      return profilesData.map((profile): Profile => ({
         id: profile.id,
         username: profile.username || "sdamember",
         full_name: profile.full_name || "SDA Member",
@@ -41,7 +57,7 @@ export function useSuggestedProfiles() {
         about: profile.about || "SDA community member",
         following_count: 0,
         followers_count: 0,
-        user_is_following: false
+        user_is_following: followingSet.has(profile.id)
       }));
     },
     enabled: !!user?.id,

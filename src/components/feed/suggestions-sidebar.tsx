@@ -1,12 +1,75 @@
 import { Button } from "@/components/common/button";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function SuggestionsSidebar({ suggestedProfiles = [] }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [followingState, setFollowingState] = useState<Record<string, boolean>>({});
   
   const handleProfileClick = (userId) => {
     if (userId) {
       navigate(`/profile/${userId}`);
+    }
+  };
+  
+  const handleFollow = async (profileId: string) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to follow other users",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // If already following, unfollow
+      if (followingState[profileId]) {
+        await supabase
+          .from('user_connections')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', profileId);
+          
+        setFollowingState(prev => ({
+          ...prev,
+          [profileId]: false
+        }));
+        
+        toast({
+          title: "Unfollowed",
+          description: "You are no longer following this user",
+        });
+      } else {
+        // Otherwise follow
+        await supabase
+          .from('user_connections')
+          .insert([
+            { follower_id: user.id, following_id: profileId }
+          ]);
+          
+        setFollowingState(prev => ({
+          ...prev,
+          [profileId]: true
+        }));
+        
+        toast({
+          title: "Following",
+          description: "You are now following this user",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating follow status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update follow status. Please try again.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -33,8 +96,13 @@ export function SuggestionsSidebar({ suggestedProfiles = [] }) {
                 </h4>
                 <p className="text-muted-foreground text-sm truncate">@{profile.username}</p>
               </div>
-              <Button size="sm" variant="outline" className="flex-shrink-0">
-                Follow
+              <Button 
+                size="sm" 
+                variant={followingState[profile.id] ? "secondary" : "outline"} 
+                className="flex-shrink-0"
+                onClick={() => handleFollow(profile.id)}
+              >
+                {followingState[profile.id] ? "Following" : "Follow"}
               </Button>
             </div>
           ))}
@@ -53,7 +121,6 @@ export function SuggestionsSidebar({ suggestedProfiles = [] }) {
           ))}
         </div>
       )}
-      
     </div>
   );
 }
