@@ -17,6 +17,7 @@ interface Post {
   } | null;
   comments_count?: number;
   shares_count?: number;
+  likes_count?: number;
   user_has_liked?: boolean;
   user_has_saved?: boolean;
 }
@@ -56,29 +57,52 @@ export function usePosts() {
       // If user is authenticated, check which posts they've liked and saved
       if (user) {
         // Get user's liked posts from post_likes table
-        const { data: likedData } = await supabase
+        const { data: likedData, error: likedError } = await supabase
           .from("post_likes")
           .select('post_id')
           .eq('user_id', user.id);
           
-        if (likedData) {
+        if (likedError) {
+          console.error("Error fetching liked posts:", likedError);
+        } else if (likedData) {
           userData.likes = likedData.map(item => item.post_id);
         }
         
         // Get user's saved posts
-        const { data: savedData } = await supabase
+        const { data: savedData, error: savedError } = await supabase
           .from("saved_posts")
           .select('post_id')
           .eq('user_id', user.id);
           
-        if (savedData) {
+        if (savedError) {
+          console.error("Error fetching saved posts:", savedError);
+        } else if (savedData) {
           userData.saved = savedData.map(item => item.post_id);
         }
       }
       
+      // For each post, count likes
+      const postsWithCounts = await Promise.all(
+        data.map(async (post: any) => {
+          // Count likes for this post
+          const { count: likesCount, error: likesError } = await supabase
+            .from('post_likes')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+            
+          if (likesError) {
+            console.error("Error counting likes:", likesError);
+          }
+          
+          return {
+            ...post,
+            likes_count: likesCount || 0
+          };
+        })
+      );
+      
       // Transform data to match our component props
-      return data.map((post: any): Post => {
-        // Count likes for each post
+      return postsWithCounts.map((post: any): Post => {
         return {
           id: post.id,
           user_id: post.user_id,
@@ -88,6 +112,7 @@ export function usePosts() {
           profiles: post.profiles,
           comments_count: post.comments_count || 0,
           shares_count: post.shares_count || 0,
+          likes_count: post.likes_count || 0,
           user_has_liked: userData.likes.includes(post.id),
           user_has_saved: userData.saved.includes(post.id)
         };

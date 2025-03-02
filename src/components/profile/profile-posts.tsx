@@ -21,14 +21,15 @@ interface ProfilePostsProps {
   }>;
   isCurrentUser: boolean;
   onLikeChange: (postId: string, liked: boolean) => void;
+  onShare?: (postId: string) => void;
 }
 
-export function ProfilePosts({ userPosts, isCurrentUser, onLikeChange }: ProfilePostsProps) {
+export function ProfilePosts({ userPosts, isCurrentUser, onLikeChange, onShare }: ProfilePostsProps) {
   return (
     <>
       {userPosts.length > 0 ? (
         userPosts.map((post) => (
-          <PostCard key={post.id} {...post} onLikeChange={onLikeChange} />
+          <PostCard key={post.id} {...post} onLikeChange={onLikeChange} onShare={onShare} />
         ))
       ) : (
         <div className="bordered-card rounded-xl p-8 text-center">
