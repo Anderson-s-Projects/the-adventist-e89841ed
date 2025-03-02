@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Heart, MessageCircle, Share, ExternalLink, Bookmark, Send } from "lucide-react";
@@ -144,41 +143,29 @@ export function PostCard({
 
   const handleShare = async () => {
     try {
+      // Try to copy the link instead of using Web Share API
+      await navigator.clipboard.writeText(window.location.origin + `/post/${id}`);
+      
       // Update share count in the database
-      const { error } = await supabase
+      await supabase
         .from('posts')
         .update({ shares_count: shareCount + 1 })
         .eq('id', id);
       
-      if (error) throw error;
-      
-      // Try to use the Web Share API if available
-      if (navigator.share) {
-        await navigator.share({
-          title: `Post by ${user.name}`,
-          text: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
-          url: window.location.origin + `/post/${id}`,
-        });
-      } else {
-        // Fallback: copy link to clipboard
-        await navigator.clipboard.writeText(window.location.origin + `/post/${id}`);
-        toast({
-          title: "Link copied",
-          description: "Post link copied to clipboard",
-        });
-      }
-      
       // Update UI
       setShareCount(prev => prev + 1);
+      
+      toast({
+        title: "Link copied",
+        description: "Post link copied to clipboard",
+      });
     } catch (error) {
       console.error("Error sharing post:", error);
-      if (error instanceof Error && error.name !== 'AbortError') {
-        toast({
-          title: "Error",
-          description: "Failed to share the post",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to share the post",
+        variant: "destructive"
+      });
     }
   };
 
@@ -186,11 +173,15 @@ export function PostCard({
     if (!showComments) {
       setIsLoadingComments(true);
       try {
+        // Fixed comments query to properly join with profiles table
         const { data, error } = await supabase
           .from('post_comments')
           .select(`
-            *,
-            profiles:user_id (username, full_name, avatar_url)
+            id, 
+            content, 
+            created_at, 
+            user_id,
+            profiles (username, full_name, avatar_url)
           `)
           .eq('post_id', id)
           .order('created_at', { ascending: false });
@@ -242,21 +233,18 @@ export function PostCard({
           content: newComment.trim()
         })
         .select(`
-          *,
+          id,
+          content,
+          created_at,
+          user_id,
           profiles:user_id (username, full_name, avatar_url)
         `);
       
       if (error) throw error;
       
-      // Update post's comment count
-      await supabase
-        .from('posts')
-        .update({ comments_count: commentCount + 1 })
-        .eq('id', id);
-      
       // Update UI
       setCommentCount(prev => prev + 1);
-      setUserComments(prev => [data[0], ...prev]);
+      setUserComments(prev => data && data.length > 0 ? [data[0], ...prev] : prev);
       setNewComment("");
       
       toast({

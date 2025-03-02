@@ -1,5 +1,5 @@
 
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
@@ -15,10 +15,8 @@ interface Post {
     username: string | null;
     avatar_url: string | null;
   } | null;
-  likes_count?: number;
   comments_count?: number;
   shares_count?: number;
-  saves_count?: number;
   user_has_liked?: boolean;
   user_has_saved?: boolean;
 }
@@ -57,14 +55,14 @@ export function usePosts() {
       
       // If user is authenticated, check which posts they've liked and saved
       if (user) {
-        // Get user's liked posts
+        // Get user's liked posts from post_likes table
         const { data: likedData } = await supabase
-          .from("posts")
-          .select('id')
+          .from("post_likes")
+          .select('post_id')
           .eq('user_id', user.id);
           
         if (likedData) {
-          userData.likes = likedData.map(item => item.id);
+          userData.likes = likedData.map(item => item.post_id);
         }
         
         // Get user's saved posts
@@ -79,20 +77,21 @@ export function usePosts() {
       }
       
       // Transform data to match our component props
-      return data.map((post: any): Post => ({
-        id: post.id,
-        user_id: post.user_id,
-        content: post.content,
-        image_url: post.image_url,
-        created_at: post.created_at,
-        profiles: post.profiles,
-        likes_count: post.likes_count || 0,
-        comments_count: post.comments_count || 0,
-        shares_count: post.shares_count || 0,
-        saves_count: post.saves_count || 0,
-        user_has_liked: userData.likes.includes(post.id),
-        user_has_saved: userData.saved.includes(post.id)
-      }));
+      return data.map((post: any): Post => {
+        // Count likes for each post
+        return {
+          id: post.id,
+          user_id: post.user_id,
+          content: post.content,
+          image_url: post.image_url,
+          created_at: post.created_at,
+          profiles: post.profiles,
+          comments_count: post.comments_count || 0,
+          shares_count: post.shares_count || 0,
+          user_has_liked: userData.likes.includes(post.id),
+          user_has_saved: userData.saved.includes(post.id)
+        };
+      });
     },
     enabled: !!user
   });
@@ -142,6 +141,27 @@ export function usePosts() {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
+
+  // Set up real-time subscription for post likes
+  useEffect(() => {
+    if (!user) return;
+    
+    const channel = supabase
+      .channel('public:post_likes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'post_likes'
+      }, (payload) => {
+        // When likes change, invalidate the posts query
+        queryClient.invalidateQueries({ queryKey: ["posts"] });
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, user]);
 
   // Set up real-time subscription for saved posts
   useEffect(() => {

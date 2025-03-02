@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Navbar } from "@/components/nav/navbar";
@@ -32,7 +33,6 @@ const Profile = () => {
     userPosts,
     isCurrentUser,
     savedPosts,
-    setSavedPosts,
     isLoadingSaved,
     fetchSavedPosts
   } = useProfileData(userId);

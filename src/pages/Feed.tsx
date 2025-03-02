@@ -42,16 +42,25 @@ const Feed = () => {
     }
     
     try {
-      // Update likes count in the database
-      const { error } = await supabase
-        .from('posts')
-        .update({ 
-          likes_count: liked ? supabase.rpc('increment', { row_id: postId, table_name: 'posts', column_name: 'likes_count' }) 
-                          : supabase.rpc('decrement', { row_id: postId, table_name: 'posts', column_name: 'likes_count' })
-        })
-        .eq('id', postId);
-      
-      if (error) throw error;
+      // Track likes in a separate table instead of updating the post directly
+      if (liked) {
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({
+            user_id: user.id,
+            post_id: postId
+          });
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', postId);
+        
+        if (error) throw error;
+      }
     } catch (error) {
       console.error("Error updating like status:", error);
       toast({
