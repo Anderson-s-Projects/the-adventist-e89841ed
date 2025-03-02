@@ -22,84 +22,94 @@ interface Post {
   user_has_saved?: boolean;
 }
 
+// Helper functions to improve readability and maintainability
+const fetchUserInteractions = async (userId: string) => {
+  const [likedResponse, savedResponse] = await Promise.all([
+    // Get user's liked posts
+    supabase
+      .from("post_likes")
+      .select('post_id')
+      .eq('user_id', userId),
+    
+    // Get user's saved posts
+    supabase
+      .from("saved_posts")
+      .select('post_id')
+      .eq('user_id', userId)
+  ]);
+  
+  const userLikes = likedResponse.error 
+    ? [] 
+    : likedResponse.data.map(item => item.post_id);
+    
+  const userSaved = savedResponse.error 
+    ? [] 
+    : savedResponse.data.map(item => item.post_id);
+    
+  return { likes: userLikes, saved: userSaved };
+};
+
+const fetchPostsWithDetails = async () => {
+  const { data, error } = await supabase
+    .from("posts")
+    .select(`
+      *,
+      profiles:user_id (
+        username,
+        full_name,
+        avatar_url
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  
+  if (error) {
+    console.error("Error fetching posts:", error);
+    throw error;
+  }
+  
+  return data;
+};
+
+const countPostLikes = async (posts: any[]) => {
+  return Promise.all(
+    posts.map(async (post) => {
+      const { count, error } = await supabase
+        .from('post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+        
+      if (error) {
+        console.error("Error counting likes for post", post.id, error);
+        return { ...post, likes_count: 0 };
+      }
+      
+      return { ...post, likes_count: count || 0 };
+    })
+  );
+};
+
 export function usePosts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // Fetch posts
+  // Main query to fetch posts
   const postsQuery = useQuery({
     queryKey: ["posts"],
     queryFn: async () => {
-      // First, get the posts
-      const { data, error } = await supabase
-        .from("posts")
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            full_name,
-            avatar_url
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      // Fetch basic post data
+      const postsData = await fetchPostsWithDetails();
       
-      if (error) {
-        console.error("Error fetching posts:", error);
-        throw error;
-      }
+      // Initialize user interaction data
+      let userData = { likes: [] as string[], saved: [] as string[] };
       
-      let userData = {
-        likes: [] as string[],
-        saved: [] as string[]
-      };
-      
-      // If user is authenticated, check which posts they've liked and saved
+      // If user is authenticated, get their likes and saved posts
       if (user) {
-        // Get user's liked posts from post_likes table
-        const { data: likedData, error: likedError } = await supabase
-          .from("post_likes")
-          .select('post_id')
-          .eq('user_id', user.id);
-          
-        if (likedError) {
-          console.error("Error fetching liked posts:", likedError);
-        } else if (likedData) {
-          userData.likes = likedData.map(item => item.post_id);
-        }
-        
-        // Get user's saved posts
-        const { data: savedData, error: savedError } = await supabase
-          .from("saved_posts")
-          .select('post_id')
-          .eq('user_id', user.id);
-          
-        if (savedError) {
-          console.error("Error fetching saved posts:", savedError);
-        } else if (savedData) {
-          userData.saved = savedData.map(item => item.post_id);
-        }
+        userData = await fetchUserInteractions(user.id);
       }
       
-      // For each post, count likes
-      const postsWithCounts = await Promise.all(
-        data.map(async (post: any) => {
-          // Count likes for this post
-          const { count: likesCount, error: likesError } = await supabase
-            .from('post_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-            
-          if (likesError) {
-            console.error("Error counting likes:", likesError);
-          }
-          
-          return {
-            ...post,
-            likes_count: likesCount || 0
-          };
-        })
-      );
+      // Add likes count to each post
+      const postsWithCounts = await countPostLikes(postsData);
       
       // Transform data to match our component props
       return postsWithCounts.map((post: any): Post => {
@@ -121,92 +131,80 @@ export function usePosts() {
     enabled: !!user
   });
   
-  // Set up real-time subscription for new posts
+  // Set up realtime subscriptions
   useEffect(() => {
-    const channel = supabase
-      .channel('public:posts')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'posts' 
-      }, (payload) => {
-        // When a new post is created, invalidate the posts query
-        queryClient.invalidateQueries({ queryKey: ["posts"] });
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'posts'
-      }, (payload) => {
-        // When a post is updated, invalidate the posts query
-        queryClient.invalidateQueries({ queryKey: ["posts"] });
-      })
-      .subscribe();
+    const setupRealtimeSubscription = () => {
+      // Posts table changes
+      const postsChannel = supabase
+        .channel('public:posts')
+        .on('postgres_changes', { 
+          event: '*',  // Listen to all events
+          schema: 'public', 
+          table: 'posts' 
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: ["posts"] });
+        })
+        .subscribe();
+      
+      return postsChannel;
+    };
+    
+    const postsChannel = setupRealtimeSubscription();
       
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(postsChannel);
     };
   }, [queryClient]);
 
-  // Set up real-time subscription for new comments
-  useEffect(() => {
-    const channel = supabase
-      .channel('public:post_comments')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'post_comments' 
-      }, (payload) => {
-        // When a new comment is created, invalidate the posts query
-        queryClient.invalidateQueries({ queryKey: ["posts"] });
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  // Set up real-time subscription for post likes
+  // Set up real-time subscription for post interactions (comments, likes, saved)
   useEffect(() => {
     if (!user) return;
     
-    const channel = supabase
-      .channel('public:post_likes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'post_likes'
-      }, (payload) => {
-        // When likes change, invalidate the posts query
-        queryClient.invalidateQueries({ queryKey: ["posts"] });
-      })
-      .subscribe();
+    const setupInteractionsSubscriptions = () => {
+      // Comments changes
+      const commentsChannel = supabase
+        .channel('public:post_comments')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'post_comments' 
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: ["posts"] });
+        })
+        .subscribe();
       
-    return () => {
-      supabase.removeChannel(channel);
+      // Likes changes  
+      const likesChannel = supabase
+        .channel('public:post_likes')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'post_likes'
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: ["posts"] });
+        })
+        .subscribe();
+      
+      // Saved posts changes
+      const savedChannel = supabase
+        .channel('public:saved_posts')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'saved_posts',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: ["posts"] });
+        })
+        .subscribe();
+        
+      return [commentsChannel, likesChannel, savedChannel];
     };
-  }, [queryClient, user]);
-
-  // Set up real-time subscription for saved posts
-  useEffect(() => {
-    if (!user) return;
     
-    const channel = supabase
-      .channel('public:saved_posts')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'saved_posts',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        // When saved posts change, invalidate the posts query
-        queryClient.invalidateQueries({ queryKey: ["posts"] });
-      })
-      .subscribe();
+    const channels = setupInteractionsSubscriptions();
       
     return () => {
-      supabase.removeChannel(channel);
+      channels.forEach(channel => supabase.removeChannel(channel));
     };
   }, [queryClient, user]);
   

@@ -1,6 +1,7 @@
+
 import { Button } from "@/components/common/button";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +11,17 @@ export function SuggestionsSidebar({ suggestedProfiles = [] }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [followingState, setFollowingState] = useState<Record<string, boolean>>({});
+  
+  // Initialize following state based on profiles data
+  useEffect(() => {
+    if (suggestedProfiles.length > 0) {
+      const initialState = suggestedProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile.user_is_following || false;
+        return acc;
+      }, {});
+      setFollowingState(initialState);
+    }
+  }, [suggestedProfiles]);
   
   const handleProfileClick = (userId) => {
     if (userId) {
@@ -30,12 +42,19 @@ export function SuggestionsSidebar({ suggestedProfiles = [] }) {
     try {
       // If already following, unfollow
       if (followingState[profileId]) {
+        // Delete the connection
         await supabase
           .from('user_connections')
           .delete()
           .eq('follower_id', user.id)
           .eq('following_id', profileId);
           
+        // Decrement follower count for the profile being unfollowed
+        await supabase.rpc('decrement_followers_count', { profile_id: profileId });
+        
+        // Decrement following count for the current user
+        await supabase.rpc('decrement_following_count', { profile_id: user.id });
+        
         setFollowingState(prev => ({
           ...prev,
           [profileId]: false
@@ -53,6 +72,12 @@ export function SuggestionsSidebar({ suggestedProfiles = [] }) {
             { follower_id: user.id, following_id: profileId }
           ]);
           
+        // Increment follower count for the profile being followed
+        await supabase.rpc('increment_followers_count', { profile_id: profileId });
+        
+        // Increment following count for the current user
+        await supabase.rpc('increment_following_count', { profile_id: user.id });
+        
         setFollowingState(prev => ({
           ...prev,
           [profileId]: true

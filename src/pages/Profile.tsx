@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Navbar } from "@/components/nav/navbar";
@@ -34,7 +33,8 @@ const Profile = () => {
     isCurrentUser,
     savedPosts,
     isLoadingSaved,
-    fetchSavedPosts
+    fetchSavedPosts,
+    fetchOtherUserProfile
   } = useProfileData(userId);
 
   // Handle unsaving a post
@@ -133,19 +133,68 @@ const Profile = () => {
     try {
       if (!user?.id || !userId) return;
 
-      const { error } = await supabase.from("followers").insert([
-        {
-          follower_id: user.id,
-          following_id: userId
-        }
-      ]);
+      // Check if already following
+      const { data, error: checkError } = await supabase
+        .from("user_connections")
+        .select("*")
+        .eq("follower_id", user.id)
+        .eq("following_id", userId)
+        .single();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+      
+      const isFollowing = !!data;
+      
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from("user_connections")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", userId);
 
-      if (error) throw error;
+        if (error) throw error;
+        
+        // Decrement follower count for the profile being unfollowed
+        await supabase.rpc('decrement_followers_count', { profile_id: userId });
+        
+        // Decrement following count for the current user
+        await supabase.rpc('decrement_following_count', { profile_id: user.id });
 
-      toast({
-        title: "Following",
-        description: "You are now following this user."
-      });
+        toast({
+          title: "Unfollowed",
+          description: "You are no longer following this user."
+        });
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from("user_connections")
+          .insert([{
+            follower_id: user.id,
+            following_id: userId
+          }]);
+
+        if (error) throw error;
+        
+        // Increment follower count for the profile being followed
+        await supabase.rpc('increment_followers_count', { profile_id: userId });
+        
+        // Increment following count for the current user
+        await supabase.rpc('increment_following_count', { profile_id: user.id });
+
+        toast({
+          title: "Following",
+          description: "You are now following this user."
+        });
+      }
+      
+      // Refresh profile data to update UI
+      if (fetchOtherUserProfile && userId) {
+        fetchOtherUserProfile(userId);
+      }
+      
     } catch (error) {
       console.error("Failed to follow user:", error);
       toast({

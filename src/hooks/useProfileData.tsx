@@ -62,8 +62,8 @@ export function useProfileData(userId?: string) {
           full_name: profileData.full_name || "SDA Member",
           avatar_url: profileData.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
           about: profileData.about || "SDA community member",
-          followers_count: 0,
-          following_count: 0
+          followers_count: profileData.followers_count || 0,
+          following_count: profileData.following_count || 0
         });
       }
       setIsLoading(false);
@@ -97,8 +97,8 @@ export function useProfileData(userId?: string) {
           full_name: profileData.full_name || "SDA Member",
           avatar_url: profileData.avatar_url || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80",
           about: profileData.about || "SDA community member",
-          followers_count: 0,
-          following_count: 0
+          followers_count: profileData.followers_count || 0,
+          following_count: profileData.following_count || 0
         };
         setProfile(formattedProfile);
       }
@@ -226,5 +226,6 @@ export function useProfileData(userId?: string) {
     savedPosts,
     isLoadingSaved,
     fetchSavedPosts,
+    fetchOtherUserProfile, // Expose this function so the Profile component can refresh data
   };
 }
