@@ -1,7 +1,8 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 interface Profile {
   id: string;
@@ -15,6 +16,30 @@ interface Profile {
 
 export function useUserProfile() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Set up realtime subscriptions for profile updates
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Subscribe to profile changes
+    const profilesChannel = supabase
+      .channel('public:profiles')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: `id=eq.${user.id}`
+      }, () => {
+        // Invalidate the cache to trigger a refetch
+        queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [user?.id, queryClient]);
   
   return useQuery({
     queryKey: ["profile", user?.id],
