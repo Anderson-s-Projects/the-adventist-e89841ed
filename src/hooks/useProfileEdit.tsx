@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,9 +12,9 @@ export function useProfileEdit(profile: any, setProfile: (profile: any) => void)
   const [editedProfile, setEditedProfile] = useState({ ...profile });
   
   // Update edited profile when the actual profile changes
-  useState(() => {
+  useEffect(() => {
     setEditedProfile(profile);
-  });
+  }, [profile]);
   
   const uploadAvatar = async (file: File): Promise<void> => {
     try {
