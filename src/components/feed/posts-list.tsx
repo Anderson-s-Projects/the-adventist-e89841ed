@@ -1,27 +1,8 @@
-
 import { PostCard } from "@/components/common/post-card";
 import { Button } from "@/components/common/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-
-interface Post {
-  id: string;
-  user_id: string;
-  content: string;
-  image_url?: string | null;
-  created_at: string;
-  profiles: {
-    full_name: string | null;
-    username: string | null;
-    avatar_url: string | null;
-  } | null;
-  likes_count?: number;
-  comments_count?: number;
-  shares_count?: number;
-  saves_count?: number;
-  user_has_liked?: boolean;
-  user_has_saved?: boolean;
-}
+import type { Post } from "@/hooks/usePosts";
 
 interface PostsListProps {
   posts: Post[];
